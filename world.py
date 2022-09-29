@@ -13,6 +13,10 @@ class Territory:
         self.owner_id = owner_id
         self.num_armies = 0
 
+    def change_owner(self, owner_id, num_armies):
+        self.owner_id = owner_id
+        self.num_armies = num_armies
+
     def __lt__(self, other):
         if isinstance(other, int):
             return self.territory_id < other
@@ -73,8 +77,11 @@ class World:
     def allowable_placement_countries(self):
         return [territory.territory_id for territory in self.available_territories]
 
-    def change_territory_owner(self, territory_num, owner_id):
-        pass
+    def change_territory_owner(self, territory_id, owner_id, num_armies):
+        """ Don't use this method except from the game change_territory_owner method"""
+        territory = self.territories[territory_id]
+        territory.owner_id = owner_id
+        territory.num_armies = num_armies
 
 
 def create_territories():

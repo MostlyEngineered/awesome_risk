@@ -80,12 +80,25 @@ class Player:
         print('ai not programmed yet')
         raise KeyError
 
-    def claim_country(self):
-        """ Claim unoccupied country"""
-        pass
+    # def claim_country(self, territory_id):
+    #     """ Claim unoccupied country"""
+    #     pass
 
     def __lt__(self, other):
         return self.player_id < other.player_id
+
+    def __eq__(self, other):
+        if isinstance(other, int):
+            return self.player_id == other
+        elif isinstance(other, Player):
+            return self.player_id == other.player_id
+        elif isinstance(other, str):
+            if other.isnumeric():
+                return self.player_id == int(other)
+            else:
+                return self.name == other
+        else:
+            return False
 
 class Card:
     def __init__(self, card_num) -> object:
@@ -113,7 +126,11 @@ def create_territory_deck():
 class Game:
     def __init__(self) -> object:
         self.options = {}
-        self.num_human_players = 3
+        self.options["num_human_players"] = 3
+        self.options["autodeal_territories"] = True # Normal game set this to false
+
+
+        self.num_human_players = self.options["num_human_players"]
 
         self.game_phase = GamePhases.INITIAL_ARMY_PLACEMENT
         self.game_over = False
@@ -131,12 +148,27 @@ class Game:
     def play(self):
         self.play_initial_army_placement()
 
+    def change_territory_owner(self, territory_id, owner_id, num_armies):
+        self.world.change_territory_owner(territory_id, owner_id, num_armies)
 
+    def player_claim_initial_territory(self, territory_id, owner_id):
+        self.change_territory_owner(territory_id, owner_id, 1)
+        self.adjust_player_army_reserve(owner_id, -1)
+        self.world.update_world()
 
     def seat_players(self):
         players = [Player.add_human_player(i, None) for i in range(self.num_human_players)]
         random.shuffle(players)
         return players
+
+    def adjust_player_army_reserve(self, player_id, reserve_adjustment):
+        player = self.get_player(player_id)
+        player.army_reserve += reserve_adjustment
+
+    def get_player(self, player_id):
+        player_index = self.players.index(player_id)
+        player = self.players[player_index]
+        return player
 
     def play_initial_army_placement(self):
         starting_armies = definitions.starting_armies[self.num_players]
@@ -150,6 +182,8 @@ class Game:
                 player_message = "Player " + str(player.player_id) + " (" + player.name + "): Input country desired"
                 player_choice = player.get_player_feedback(player_message, [str(i) for i in self.world.allowable_placement_countries()])
                 print("Player " + str(player.player_id) + " (" + player.name + "): selected " + str(player_choice))
+                self.player_claim_initial_territory(int(player_choice), player.player_id)
+
 
 
 
