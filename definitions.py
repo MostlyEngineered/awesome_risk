@@ -1,5 +1,6 @@
 import pandas as pd
 from enum import Enum, auto
+import random
 
 
 class CardType(Enum):
@@ -214,3 +215,10 @@ territory_continents = {tid: cid for cid, tids in continent_territories.items() 
 player_colors = {0: "red", 1: "blue", 2: "green", 3: "yellow", 4: "pink", 5: "black", None: None}
 
 starting_armies = {2: 40, 3: 35, 4: 30, 5: 25, 6: 20}
+
+player_name_list = ["Jasper", "Bowser", "Fedora", "Winston", "Harris", "Chad", "Ash", "Bardock", "Hercule"]
+
+
+def generate_random_name(exclude_names=[]):
+    random_list = list(set(player_name_list) - set(exclude_names))
+    return random.choice(random_list)
