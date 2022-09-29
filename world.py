@@ -14,8 +14,30 @@ class Territory:
         self.num_armies = 0
 
     def __lt__(self, other):
-        return self.territory_id < other.territory_id
+        if isinstance(other, int):
+            return self.territory_id < other
+        elif isinstance(other, str):
+            if other.isnumeric():
+                return self.territory_id < int(other)
+            else:
+                return False # Name lookup is probably not super important
+        elif isinstance(other, Territory):
+            return self.territory_id < other.territory_id
+        else:
+            return False
 
+    def __eq__(self, other):
+        if isinstance(other, int):
+            return self.territory_id == other
+        elif isinstance(other, str):
+            if other.isnumeric():
+                return self.territory_id == int(other)
+            else:
+                return self.name == other
+        elif isinstance(other, Territory):
+            return self.territory_id == other.territory_id
+        else:
+            return False
 
 class World:
     def __init__(self) -> object:
@@ -23,6 +45,7 @@ class World:
         self.territories_occupied = 0
         self.num_territories = len(self.territories)
         self.world_occupied = False
+        self.available_territories = []
 
     def check_army_placement_complete(self):
         if self.territories_occupied == self.num_territories:
@@ -35,8 +58,24 @@ class World:
             self.world_occupied = False
             return False
 
+    def update_available_territories(self):
+        self.available_territories = [territory for territory in self.territories if territory.owner_id is None]
+
+    def update_territory_count(self):
+        self.update_available_territories()
+        self.territories_occupied = self.num_territories - len(self.available_territories)
+        if self.territories_occupied == self.num_territories:
+            self.world_occupied = True
+
+    def update_world(self):
+        self.update_territory_count()
+
+    def allowable_placement_countries(self):
+        return [territory.territory_id for territory in self.available_territories]
+
     def change_territory_owner(self, territory_num, owner_id):
         pass
+
 
 def create_territories():
     territories = []
