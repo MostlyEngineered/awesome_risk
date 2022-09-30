@@ -127,31 +127,32 @@ class Bot(Player):
     """ Should implement method for bot to convert so that it is player 0 for training purposes"""
 
     def __init__(self, player_id, name, bot_type):
+        super().__init__(player_id, name, bot_type)
         self.bot_type = bot_type  # TODO clean up initialization of bot
         self.initialize_player(player_id, name, False)
 
     def get_action(self, game_state):
         if game_state == PlayerPhases.INITIAL_ARMY_PLACEMENT:
             pass
-        elif game_state == GamePhases.INITIAL_ARMY_FORTIFICATION:
+        elif game_state == PlayerPhases.INITIAL_ARMY_FORTIFICATION:
             pass
-        elif game_state == GamePhases.PLAYER_CARD_CHECK:
+        elif game_state == PlayerPhases.PLAYER_CARD_CHECK:
             pass
-        elif game_state == GamePhases.PLAYER_PLACE_NEW_ARMIES:
+        elif game_state == PlayerPhases.PLAYER_PLACE_NEW_ARMIES:
             pass
-        elif game_state == GamePhases.PLAYER_ATTACKING:
+        elif game_state == PlayerPhases.PLAYER_ATTACKING:
             pass
-        elif game_state == GamePhases.PLAYER_FORTIFICATION:
+        elif game_state == PlayerPhases.PLAYER_FORTIFICATION:
             pass
-        elif game_state == GamePhases.PLAYER_ATTACKING_FROM:
+        elif game_state == PlayerPhases.PLAYER_ATTACKING_FROM:
             pass
-        elif game_state == GamePhases.PLAYER_ATTACKING_TO:
+        elif game_state == PlayerPhases.PLAYER_ATTACKING_TO:
             pass
-        elif game_state == GamePhases.PLAYER_FORTIFICATION_FROM:
+        elif game_state == PlayerPhases.PLAYER_FORTIFICATION_FROM:
             self.select_fortification_from()
-        elif game_state == GamePhases.PLAYER_FORTIFICATION_TO:
+        elif game_state == PlayerPhases.PLAYER_FORTIFICATION_TO:
             self.select_fortification_to()
-        elif game_state == GamePhases.PLAYER_CARD_PICK:
+        elif game_state == PlayerPhases.PLAYER_CARD_PICK:
             pass
         else:
             pass
