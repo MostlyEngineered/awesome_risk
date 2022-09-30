@@ -34,7 +34,11 @@ def calculate_next_army_bonus(previous_bonus=0):
 
 class GamePhases(Enum):
     INITIAL_ARMY_PLACEMENT = auto()
-
+    INITIAL_ARMY_FORTIFICATION = auto()
+    PLAYER_CARD_CHECK = auto()
+    PLAYER_PLACE_NEW_ARMIES = auto()
+    PLAYER_ATTACKING = auto()
+    PLAYER_FORTIFICATION = auto()
 
 class Player:
     def __init__(self, player_id, name, human, ai_type=None) -> object:
@@ -56,8 +60,8 @@ class Player:
         return cls(player_id, name, human=True)
 
     @classmethod
-    def add_ai_player(cls, player_id, name):
-        return cls(player_id, name, human=False)
+    def add_ai_player(cls, player_id, name, ai_type):
+        return cls(player_id, name, human=False, ai_type)
 
     def get_player_feedback(self, print_msg, allowable_actions):
         if self.human:
@@ -69,6 +73,7 @@ class Player:
 
     def get_human_feedback(self, print_msg, allowable_actions):
         print(print_msg)
+        allowable_actions = [str(i) for i in allowable_actions]
         while True:
             attempt = input()
             if attempt in allowable_actions:
@@ -79,10 +84,6 @@ class Player:
     def get_ai_feedback(self):
         print('ai not programmed yet')
         raise KeyError
-
-    # def claim_country(self, territory_id):
-    #     """ Claim unoccupied country"""
-    #     pass
 
     def __lt__(self, other):
         return self.player_id < other.player_id
@@ -99,6 +100,55 @@ class Player:
                 return self.name == other
         else:
             return False
+
+
+class Bot(Player):
+    def __init__(self, bot_type):
+        self.bot_type = bot_type
+        self.action_space = None
+
+    def get_action(self, game_state):
+        if game_state == GamePhases.INITIAL_ARMY_PLACEMENT:
+
+        elif game_state == GamePhases.INITIAL_ARMY_FORTIFICATION:
+
+        elif game_state == GamePhases.PLAYER_CARD_CHECK:
+
+        elif game_state == GamePhases.PLAYER_PLACE_NEW_ARMIES:
+
+        elif game_state == GamePhases.PLAYER_ATTACKING:
+
+        elif game_state == GamePhases.PLAYER_FORTIFICATION:
+
+        else:
+
+    def select_initial_army_placement(self):
+        raise NotImplementedError()
+
+    def select_initial_army_fortification(self):
+        raise NotImplementedError()
+
+    def select_card_decision(self):
+        raise NotImplementedError()
+
+    def select_cards_to_use(self):
+        raise NotImplementedError()
+
+    def place_new_armies(self):
+        raise NotImplementedError()
+
+    def select_attack_from(self):
+        raise NotImplementedError()
+
+    def select_attack_to(self):
+        raise NotImplementedError()
+
+    def select_fortification_from(self):
+        raise NotImplementedError()
+
+    def select_fortification_to(self):
+        raise NotImplementedError()
+
 
 class Card:
     def __init__(self, card_num) -> object:
@@ -122,12 +172,13 @@ class Card:
 def create_territory_deck():
     return [Card(card_num) for card_num in definitions.territory_cards.keys()]
 
-
 class Game:
     def __init__(self) -> object:
         self.options = {}
-        self.options["num_human_players"] = 3
+        self.options["num_human_players"] = 0
+        self.options["computer_ai"] = ["random_ai", "random_ai", "random_ai"]
         self.options["autodeal_territories"] = True # Normal game set this to false
+        self.options["initial_army_placement_batch_size"] = 1 # How many armies a player places at a time after initial country selection
 
 
         self.num_human_players = self.options["num_human_players"]
@@ -143,32 +194,82 @@ class Game:
 
         self.players = self.seat_players()
         self.num_players = len(self.players)  # turn order is order in list
+        self.game_army_reserves = 0
+        self.out_players = []
+        self.current_game_action_space = []
 
+    def calculate_game_army_reserves(self):
+        """ Calculate if all army reserves have been placed"""
+        self.game_army_reserves = sum([player.army_reserve for player in self.players])
 
     def play(self):
         self.play_initial_army_placement()
+        self.game_phase = GamePhases.INITIAL_ARMY_FORTIFICATION
+        self.play_initial_army_fortification()
+
+        while not self.game_over:
+            for player in self.players:
+                if player in self.players:  # Players can be eliminated out of list
+                    self.play_player_turn(player)
+
+
+
 
     def change_territory_owner(self, territory_id, owner_id, num_armies):
+        """ Change territory owner and change number of armies in territory"""
         self.world.change_territory_owner(territory_id, owner_id, num_armies)
 
     def player_claim_initial_territory(self, territory_id, owner_id):
+        """ Claim initial territory, place one army from their reserve in the territory """
         self.change_territory_owner(territory_id, owner_id, 1)
         self.adjust_player_army_reserve(owner_id, -1)
         self.world.update_world()
 
     def seat_players(self):
+        """ Seat all players (currently only human players)"""
         players = [Player.add_human_player(i, None) for i in range(self.num_human_players)]
+        for comp_player in self.options["computer_ai"]:
+            players = players + [Player.add_ai_player()]
         random.shuffle(players)
         return players
 
     def adjust_player_army_reserve(self, player_id, reserve_adjustment):
+        """ Adjust player army reserve by reserve_adjustment"""
         player = self.get_player(player_id)
         player.army_reserve += reserve_adjustment
+
+    def adjust_territory_army_number(self, territory_id, army_number, addition_mode=True):
+        """ adjust number of armies in a territory by setting or addition"""
+        if addition_mode:
+            # Addition mode
+            self.world.territories[territory_id].num_armies += army_number
+        else:
+            # Set mode
+            self.world.territories[territory_id].num_armies = army_number
 
     def get_player(self, player_id):
         player_index = self.players.index(player_id)
         player = self.players[player_index]
         return player
+
+    def get_allowable_initial_fortifications(self, player_id):
+        return [territory.territory_id for territory in self.world.territories if territory.owner_id == player_id]
+
+    def player_select_initial_placements(self):
+        while not self.world.world_occupied:
+            for player in self.players:
+                player_message = "Player " + str(player.player_id) + " (" + player.name + "): Input country desired"
+                self.current_game_action_space = [str(i) for i in self.world.allowable_placement_countries()]
+                player_choice = player.get_player_feedback(player_message, self.current_game_action_space)
+                self.player_claim_initial_territory(int(player_choice), player.player_id)
+                game_log.info("Player " + str(player.player_id) + " (" + player.name + "): selected " + str(player_choice))
+
+    def autodeal_initial_placements(self):
+        while not self.world.world_occupied:
+            for player in self.players:
+                selected_territory_id = random.choice(self.world.allowable_placement_countries())
+                self.player_claim_initial_territory(int(selected_territory_id), player.player_id)
+                game_log.info("Player " + str(player.player_id) + " (" + player.name + "): autodealt " + str(selected_territory_id))
 
     def play_initial_army_placement(self):
         starting_armies = definitions.starting_armies[self.num_players]
@@ -176,15 +277,38 @@ class Game:
             # Assign correct initial armies
             player.army_reserve = starting_armies
         self.world.update_world()
+        if self.options["autodeal_territories"]:
+            self.autodeal_initial_placements()
+        else:
+            self.player_select_initial_placements()
 
-        while not self.world.world_occupied:
+    def play_initial_army_fortification(self):
+        game_log.info("Start initial fortification")
+        batch_size = self.options["initial_army_placement_batch_size"]
+        while game.game_phase == GamePhases.INITIAL_ARMY_FORTIFICATION:
             for player in self.players:
-                player_message = "Player " + str(player.player_id) + " (" + player.name + "): Input country desired"
-                player_choice = player.get_player_feedback(player_message, [str(i) for i in self.world.allowable_placement_countries()])
-                print("Player " + str(player.player_id) + " (" + player.name + "): selected " + str(player_choice))
-                self.player_claim_initial_territory(int(player_choice), player.player_id)
+                self.current_game_action_space = self.get_allowable_initial_fortifications(player.player_id)
+                for placement in range(batch_size):
+                    if player.army_reserve <= 0:
+                        continue
+                    player_message = "Player " + str(player.player_id) + " (" + player.name + "): Input country desired"
+                    selected_territory_id = player.get_player_feedback(player_message, self.current_game_action_space)
+                    self.adjust_player_army_reserve(player.player_id, -1)
+                    self.adjust_territory_army_number(int(selected_territory_id), 1, addition_mode=True)
+                    game_log.info("Player " + str(player.player_id) + " (" + player.name + "): added army to " + str(
+                        selected_territory_id))
+                self.calculate_game_army_reserves()
+                if self.game_army_reserves <= 0:
+                    self.game_phase = GamePhases.INITIAL_ARMY_FORTIFICATION
 
+    def play_player_turn(self, player):
+        self.game_phase = GamePhases.PLAYER_FORTIFICATION
 
+        self.game_phase = GamePhases.PLAYER_PLACE_NEW_ARMIES
+
+        self.game_phase = GamePhases.PLAYER_ATTACKING
+
+        self.game_phase = GamePhases.PLAYER_FORTIFICATION
 
 
 if __name__ == "__main__":
