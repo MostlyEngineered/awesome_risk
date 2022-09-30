@@ -214,7 +214,7 @@ territory_continents = {tid: cid for cid, tids in continent_territories.items() 
 
 player_colors = {0: "red", 1: "blue", 2: "green", 3: "yellow", 4: "pink", 5: "black", None: None}
 
-starting_armies = {2: 40, 3: 35, 4: 30, 5: 25, 6: 20}
+starting_armies = {1: 60, 2: 40, 3: 35, 4: 30, 5: 25, 6: 20} #1 case is for debugging
 
 player_name_list = ["Jasper", "Bowser", "Fedora", "Winston", "Harris", "Chad", "Ash", "Bardock", "Hercule"]
 

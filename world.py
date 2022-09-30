@@ -17,6 +17,15 @@ class Territory:
         self.owner_id = owner_id
         self.num_armies = num_armies
 
+    def max_attack_with(self):
+        max_attack = self.num_armies - 1
+        if max_attack > 3:
+            return 3
+        elif max_attack <= 0:
+            program_log.error("illegal max attack calculation")
+        else:
+            return max_attack
+
     def __lt__(self, other):
         if isinstance(other, int):
             return self.territory_id < other
