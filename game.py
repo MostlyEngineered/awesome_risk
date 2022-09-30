@@ -45,12 +45,12 @@ class GamePhases(Enum):
 
 @unique
 class PlayerPhases(Enum):
-    INITIAL_ARMY_PLACEMENT = GamePhases.INITIAL_ARMY_PLACEMENT
-    INITIAL_ARMY_FORTIFICATION = GamePhases.INITIAL_ARMY_FORTIFICATION
-    PLAYER_CARD_CHECK = GamePhases.PLAYER_CARD_CHECK
-    PLAYER_PLACE_NEW_ARMIES = GamePhases.PLAYER_PLACE_NEW_ARMIES
-    PLAYER_ATTACKING = GamePhases.PLAYER_ATTACKING
-    PLAYER_FORTIFICATION = GamePhases.PLAYER_FORTIFICATION
+    INITIAL_ARMY_PLACEMENT = GamePhases.INITIAL_ARMY_PLACEMENT.value
+    INITIAL_ARMY_FORTIFICATION = GamePhases.INITIAL_ARMY_FORTIFICATION.value
+    PLAYER_CARD_CHECK = GamePhases.PLAYER_CARD_CHECK.value
+    PLAYER_PLACE_NEW_ARMIES = GamePhases.PLAYER_PLACE_NEW_ARMIES.value
+    PLAYER_ATTACKING = GamePhases.PLAYER_ATTACKING.value
+    PLAYER_FORTIFICATION = GamePhases.PLAYER_FORTIFICATION.value
 
     PLAYER_ATTACKING_FROM = auto()
     PLAYER_ATTACKING_TO = auto()
@@ -60,51 +60,90 @@ class PlayerPhases(Enum):
 
 
 class Player:
+    """ Player class does not get instantiated as it will be missing a feedback option.  Instantiate a bot or a human."""
+
     def __init__(self, player_id, name) -> object:
         self.human = True
-        self.initialize_player(player_id, name, self.human)
+        # self.initialize_player(player_id, name)
 
         # TODO clean up initialization of Player, utilize the action_space in the code
         # TODO organize Player code into separate file
         # TODO organize folder for bots to allow easier selection
 
-    def initialize_player(self, player_id, name, human):
-
-        self.player_id = player_id
-
         if name is None:
             self.name = generate_random_name()
         else:
             self.name = name
-
-        self.human = human
-
+        self.player_id = player_id
+        self.cards = []
         self.continents_owned = []
         self.territories_owned = []
         self.army_reserve = 0
         self.action_space = None
+        self.player_state = None  # Update from PlayerState Enum
 
-    def get_player_feedback(self, print_msg, allowable_actions):
-        if self.human:
-            feedback = self.get_human_feedback(print_msg, allowable_actions)
+    # def get_player_feedback(self, print_msg, allowable_actions):
+    #     if self.human:
+    #         feedback = self.get_human_feedback(print_msg, allowable_actions)
+    #     else:
+    #         get_ai_feedback(self)
+    #
+    #     return feedback
+    def get_player_tag(self):
+        return "Player " + str(self.player_id) + " (" + self.name + ")"
+
+    def get_player_feedback(self):
+        """ This function should get overwritten by inheritance"""
+        raise NotImplementedError()
+
+    def generic_selection(self, action_space, player_phase_set, msg):
+        """ Used by the custom action functions.
+              Sets action_space, player phase, and uses inherited get_player_feedback function
+              to get action from Bot or Human"""
+        self.action_space = action_space
+        self.player_state = player_phase_set
+        player_choice = self.get_player_feedback()
+        game_log.info(self.get_player_tag() + " " + msg + ": " + str(player_choice))
+
+        return player_choice
+
+    def select_initial_army_placement(self, action_space):
+        return self.generic_selection(action_space, PlayerPhases.INITIAL_ARMY_PLACEMENT, "Initial army placement")
+
+    def select_initial_army_fortification(self, action_space):
+        return self.generic_selection(
+            action_space, PlayerPhases.INITIAL_ARMY_FORTIFICATION, "Initial army fortification"
+        )
+
+    def select_card_decision(self, action_space):
+        return self.generic_selection(action_space, PlayerPhases.PLAYER_CARD_CHECK, "Selects to use cards")
+
+    def select_cards_to_use(self, action_space):
+        return self.generic_selection(action_space, PlayerPhases.PLAYER_CARD_PICK, "Selects card to use")
+
+    def place_new_armies(self, action_space):
+        return self.generic_selection(action_space, PlayerPhases.PLAYER_PLACE_NEW_ARMIES, "Places new army in")
+
+    def select_attack_from(self, action_space):
+        return self.generic_selection(action_space, PlayerPhases.PLAYER_ATTACKING_FROM, "Attacks from")
+
+    def select_attack_to(self, action_space):
+        return self.generic_selection(action_space, PlayerPhases.PLAYER_ATTACKING_TO, "Attacking")
+
+    def select_fortification_from(self, action_space):
+        return self.generic_selection(action_space, PlayerPhases.PLAYER_FORTIFICATION_FROM, "Fortifies from")
+
+    def select_fortification_to(self, action_space):
+        return self.generic_selection(action_space, PlayerPhases.PLAYER_FORTIFICATION_TO, "Fortifying")
+
+    def check_player_can_use_cards(self):
+        if len(card_types) >= 3:
+            # Need at least 3 cards to be able to cash cards in
+            card_types = [card for card in self.cards]
         else:
-            get_ai_feedback(self)
+            return False
 
-        return feedback
 
-    def get_human_feedback(self, print_msg, allowable_actions):
-        print(print_msg)
-        allowable_actions = [str(i) for i in allowable_actions]
-        while True:
-            attempt = input()
-            if attempt in allowable_actions:
-                return attempt
-            else:
-                print("Invalid selection, input again")
-
-    def get_ai_feedback(self):
-        print("ai not programmed yet")
-        raise KeyError
 
     def __lt__(self, other):
         return self.player_id < other.player_id
@@ -123,66 +162,127 @@ class Player:
             return False
 
 
+class Human(Player):
+    """ Should implement method for bot to convert so that it is player 0 for training purposes"""
+
+    def __init__(self, player_id, name):
+        super().__init__(player_id, name)
+        self.human = True
+        self.bot_type = None
+        # self.initialize_player(player_id, name, False)
+
+    def get_human_feedback(self, print_msg) -> int:
+        """ Human version of this function checks player state, prints custom message, collects desired feedback"""
+        self.action_space = [str(i) for i in self.action_space]
+        while True:
+            print(self.get_player_tag() + " " + print_msg)
+            print("Allowable actions: " + str(self.action_space))
+            attempt = input()
+            if attempt in self.action_space:
+                # TODO implement repeat action strategy (ie, attack 10 times.  If player_state remains consistent then keep trying action, stop when one gets rejected.)
+                return int(attempt)  # Selection should always be a player_id, territory_id, card_id, or card_use(y/n) (ie an int)
+            elif attempt == "r":
+                # r selects random element from allowable_actions
+                return random.choice(self.action_space)
+            elif attempt == "q":
+                print("You have selected to quit game, are you sure you want to quit game? (y/n)")
+                quit_confirm = input()
+                if quit_confirm.lower() == "y":
+                    game_log.info(self.get_player_tag() + " has elected to quit game")
+                    # TODO implement game quit method
+                else:
+                    print("Resuming game")
+
+            else:
+                print("Invalid selection, input again")
+
+    def get_player_feedback(self):
+        if self.player_state == PlayerPhases.INITIAL_ARMY_PLACEMENT:
+            print_msg = "Select an army placement"
+            return self.get_human_feedback(print_msg)
+
+        elif self.player_state == PlayerPhases.INITIAL_ARMY_FORTIFICATION:
+            print_msg = "Select an army placement (fortification)"
+            return self.get_human_feedback(print_msg)
+
+        elif self.player_state == PlayerPhases.PLAYER_CARD_CHECK:
+            print_msg = "Would you like to exchange cards for armies?"
+            return self.get_human_feedback(print_msg)
+
+        elif self.player_state == PlayerPhases.PLAYER_PLACE_NEW_ARMIES:
+            print_msg = "Select an army placement"
+            return self.get_human_feedback(print_msg)
+
+        # elif game_state == PlayerPhases.PLAYER_ATTACKING: #This value should not be needed
+        #     print_msg = "Select a country to attack"
+        #     return self.get_human_feedback(print_msg)
+
+        # elif game_state == PlayerPhases.PLAYER_FORTIFICATION: #This value should not be needed
+        #     print_msg = "Select an army placement"
+        #     return self.get_human_feedback(print_msg)
+
+        elif self.player_state == PlayerPhases.PLAYER_ATTACKING_FROM:
+            print_msg = "Select a territory to attack from"
+            return self.get_human_feedback(print_msg)
+
+        elif self.player_state == PlayerPhases.PLAYER_ATTACKING_TO:
+            print_msg = "Select a territory to attack"
+            return self.get_human_feedback(print_msg)
+
+        elif self.player_state == PlayerPhases.PLAYER_FORTIFICATION_FROM:
+            print_msg = "Select a territory to fortify from"
+            return self.get_human_feedback(print_msg)
+
+        elif self.player_state == PlayerPhases.PLAYER_FORTIFICATION_TO:
+            print_msg = "Select a territory to fortify to"
+            return self.get_human_feedback(print_msg)
+
+        elif self.player_state == PlayerPhases.PLAYER_CARD_PICK:
+            print_msg = "Select a card"
+            return self.get_human_feedback(print_msg)
+
+        else:
+            game_log.error("Invalid player state selected: " + str(self.player_state) + " (player_state)")
+            raise ValueError
+
+
 class Bot(Player):
     """ Should implement method for bot to convert so that it is player 0 for training purposes"""
 
     def __init__(self, player_id, name, bot_type):
-        super().__init__(player_id, name, bot_type)
-        self.bot_type = bot_type  # TODO clean up initialization of bot
-        self.initialize_player(player_id, name, False)
+        super().__init__(player_id, name)
+        self.human = False
+        self.bot_type = bot_type
 
-    def get_action(self, game_state):
-        if game_state == PlayerPhases.INITIAL_ARMY_PLACEMENT:
-            pass
-        elif game_state == PlayerPhases.INITIAL_ARMY_FORTIFICATION:
-            pass
-        elif game_state == PlayerPhases.PLAYER_CARD_CHECK:
-            pass
-        elif game_state == PlayerPhases.PLAYER_PLACE_NEW_ARMIES:
-            pass
-        elif game_state == PlayerPhases.PLAYER_ATTACKING:
-            pass
-        elif game_state == PlayerPhases.PLAYER_FORTIFICATION:
-            pass
-        elif game_state == PlayerPhases.PLAYER_ATTACKING_FROM:
-            pass
-        elif game_state == PlayerPhases.PLAYER_ATTACKING_TO:
-            pass
-        elif game_state == PlayerPhases.PLAYER_FORTIFICATION_FROM:
-            self.select_fortification_from()
-        elif game_state == PlayerPhases.PLAYER_FORTIFICATION_TO:
-            self.select_fortification_to()
-        elif game_state == PlayerPhases.PLAYER_CARD_PICK:
-            pass
-        else:
-            pass
 
-    def select_initial_army_placement(self):
-        raise NotImplementedError()
+    def get_player_feedback(self):
+        return random.choice(self.action_space)
 
-    def select_initial_army_fortification(self):
-        raise NotImplementedError()
-
-    def select_card_decision(self):
-        raise NotImplementedError()
-
-    def select_cards_to_use(self):
-        raise NotImplementedError()
-
-    def place_new_armies(self):
-        raise NotImplementedError()
-
-    def select_attack_from(self):
-        raise NotImplementedError()
-
-    def select_attack_to(self):
-        raise NotImplementedError()
-
-    def select_fortification_from(self):
-        raise NotImplementedError()
-
-    def select_fortification_to(self):
-        raise NotImplementedError()
+    # def get_player_feedback(self):
+    #     if self.player_state == PlayerPhases.INITIAL_ARMY_PLACEMENT:
+    #         pass
+    #     elif self.player_state == PlayerPhases.INITIAL_ARMY_FORTIFICATION:
+    #         pass
+    #     elif self.player_state == PlayerPhases.PLAYER_CARD_CHECK:
+    #         pass
+    #     elif self.player_state == PlayerPhases.PLAYER_PLACE_NEW_ARMIES:
+    #         pass
+    #     elif self.player_state == PlayerPhases.PLAYER_ATTACKING:
+    #         pass
+    #     elif self.player_state == PlayerPhases.PLAYER_FORTIFICATION:
+    #         pass
+    #     elif self.player_state == PlayerPhases.PLAYER_ATTACKING_FROM:
+    #         pass
+    #     elif self.player_state == PlayerPhases.PLAYER_ATTACKING_TO:
+    #         pass
+    #     elif self.player_state == PlayerPhases.PLAYER_FORTIFICATION_FROM:
+    #         pass
+    #     elif self.player_state == PlayerPhases.PLAYER_FORTIFICATION_TO:
+    #         pass
+    #     elif self.player_state == PlayerPhases.PLAYER_CARD_PICK:
+    #         pass
+    #     else:
+    #         pass
 
 
 class Card:
@@ -212,8 +312,12 @@ def create_territory_deck():
 class Game:
     def __init__(self) -> object:
         self.options = {}
-        self.options["num_human_players"] = 0
-        self.options["computer_ai"] = ["random_ai", "random_ai", "random_ai"]
+        # self.options["num_human_players"] = 3  # Case for a human game
+        # self.options["computer_ai"] = []  # Case for a human game
+
+        self.options["num_human_players"] = 0  # Case for a bot game
+        self.options["computer_ai"] = ["random_ai", "random_ai", "random_ai"]  # Case for a bot game
+
         self.options["autodeal_territories"] = True  # Normal game set this to false
         self.options[
             "initial_army_placement_batch_size"
@@ -262,7 +366,7 @@ class Game:
 
     def seat_players(self):
         """ Seat all players (currently only human players)"""
-        players = [Player(i, None) for i in range(self.num_human_players)]
+        players = [Human(i, None) for i in range(self.num_human_players)]
         for comp_player in self.options["computer_ai"]:
             players = players + [Bot(player_id=len(players), name=None, bot_type=comp_player)]
         random.shuffle(players)
@@ -295,7 +399,8 @@ class Game:
             for player in self.players:
                 player_message = "Player " + str(player.player_id) + " (" + player.name + "): Input country desired"
                 self.current_game_action_space = [str(i) for i in self.world.allowable_placement_countries()]
-                player_choice = player.get_player_feedback(player_message, self.current_game_action_space)
+                # player_choice = player.get_player_feedback(player_message, self.current_game_action_space)
+                player_choice = player.select_initial_army_placement(self.current_game_action_space)
                 self.player_claim_initial_territory(int(player_choice), player.player_id)
                 game_log.info(
                     "Player " + str(player.player_id) + " (" + player.name + "): selected " + str(player_choice)
@@ -335,24 +440,21 @@ class Game:
                 for placement in range(batch_size):
                     if player.army_reserve <= 0:
                         continue
-                    player_message = "Player " + str(player.player_id) + " (" + player.name + "): Input country desired"
-                    selected_territory_id = player.get_player_feedback(player_message, self.current_game_action_space)
+                    selected_territory_id = player.select_initial_army_fortification(self.current_game_action_space)
                     self.adjust_player_army_reserve(player.player_id, -1)
                     self.adjust_territory_army_number(int(selected_territory_id), 1, addition_mode=True)
-                    game_log.info(
-                        "Player "
-                        + str(player.player_id)
-                        + " ("
-                        + player.name
-                        + "): added army to "
-                        + str(selected_territory_id)
-                    )
+
                 self.calculate_game_army_reserves()
                 if self.game_army_reserves <= 0:
-                    self.game_phase = GamePhases.INITIAL_ARMY_FORTIFICATION
+                    self.game_phase = GamePhases.PLAYER_PLACE_NEW_ARMIES
 
     def play_player_turn(self, player):
-        self.game_phase = GamePhases.PLAYER_FORTIFICATION
+        self.game_phase = GamePhases.PLAYER_CARD_CHECK
+        player.player_state = PlayerPhases.PLAYER_CARD_CHECK
+        player.check_player_can_use_cards()
+        # CONTINUE HERE
+        player.player_state = PlayerPhases.PLAYER_CARD_PICK
+
 
         self.game_phase = GamePhases.PLAYER_PLACE_NEW_ARMIES
 
