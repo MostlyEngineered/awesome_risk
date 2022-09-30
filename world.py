@@ -1,7 +1,7 @@
 import definitions
 from logger_format import get_logger
 
-program_log = get_logger('ProgramLog', file_name='program_errors.txt', logging_level='error')
+program_log = get_logger("ProgramLog", file_name="program_errors.txt", logging_level="error")
 
 
 class Territory:
@@ -24,7 +24,7 @@ class Territory:
             if other.isnumeric():
                 return self.territory_id < int(other)
             else:
-                return False # Name lookup is probably not super important
+                return False  # Name lookup is probably not super important
         elif isinstance(other, Territory):
             return self.territory_id < other.territory_id
         else:
@@ -42,6 +42,7 @@ class Territory:
             return self.territory_id == other.territory_id
         else:
             return False
+
 
 class World:
     def __init__(self) -> object:
