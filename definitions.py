@@ -1,14 +1,45 @@
 import pandas as pd
-from enum import Enum, auto
+from enum import Enum, auto, unique
 import random
 
+@unique
+class GamePhases(Enum):
+    INITIAL_ARMY_PLACEMENT = auto()
+    INITIAL_ARMY_FORTIFICATION = auto()
+    PLAYER_CARD_CHECK = auto()
+    PLAYER_PLACE_NEW_ARMIES = auto()
+    PLAYER_ATTACKING = auto()
+    PLAYER_FORTIFICATION = auto()
 
+@unique
+class PlayerPhases(Enum):
+
+    INITIAL_ARMY_PLACEMENT = GamePhases.INITIAL_ARMY_PLACEMENT.value
+    INITIAL_ARMY_FORTIFICATION = GamePhases.INITIAL_ARMY_FORTIFICATION.value
+    PLAYER_CARD_CHECK = GamePhases.PLAYER_CARD_CHECK.value
+    PLAYER_PLACE_NEW_ARMIES = GamePhases.PLAYER_PLACE_NEW_ARMIES.value
+    PLAYER_ATTACKING = GamePhases.PLAYER_ATTACKING.value
+    PLAYER_FORTIFICATION = GamePhases.PLAYER_FORTIFICATION.value
+
+    PLAYER_ATTACKING_FROM = auto()
+    PLAYER_ATTACKING_TO = auto()
+    PLAYER_MOVING_POST_WIN = auto()
+    PLAYER_FORTIFICATION_FROM = auto()
+    PLAYER_FORTIFICATION_TO = auto()
+    PLAYER_CARD_PICK = auto()
+
+@unique
+class CardPhases(Enum):
+    PLAYER_CANT_USE_CARDS = auto()
+    PLAYER_CAN_USE_CARDS = auto()
+    PLAYER_MUST_USE_CARDS = auto()
+
+@unique
 class CardType(Enum):
     INFANTRY = auto()
     CAVALRY = auto()
     ARTILLERY = auto()
     WILD = auto()
-
 
 territory_names = {
     0: "afghanistan",

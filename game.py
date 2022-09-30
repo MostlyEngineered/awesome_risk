@@ -3,12 +3,13 @@ import logging
 import definitions
 
 # from world import CONNECT, AREAS, MAP, KEY
-from aenum import Enum, auto, unique, extend_enum
+from enum import Enum, auto, unique
 from logger_format import get_logger
 from world import World
-from definitions import generate_random_name
+from definitions import generate_random_name, PlayerPhases, GamePhases, CardPhases
 import random
 import numpy as np
+from combat import resolve_combat
 
 game_log = get_logger("GameLog", file_name="game_log.txt", logging_level="info")
 program_log = get_logger("ProgramLog", file_name="program_errors.txt", logging_level="error")
@@ -38,38 +39,7 @@ def calculate_next_army_bonus(previous_bonus=0):
         raise KeyError
 
 
-@unique
-class GamePhases(Enum):
-    INITIAL_ARMY_PLACEMENT = auto()
-    INITIAL_ARMY_FORTIFICATION = auto()
-    PLAYER_CARD_CHECK = auto()
-    PLAYER_PLACE_NEW_ARMIES = auto()
-    PLAYER_ATTACKING = auto()
-    PLAYER_FORTIFICATION = auto()
 
-
-@unique
-class PlayerPhases(Enum):
-
-    INITIAL_ARMY_PLACEMENT = GamePhases.INITIAL_ARMY_PLACEMENT.value
-    INITIAL_ARMY_FORTIFICATION = GamePhases.INITIAL_ARMY_FORTIFICATION.value
-    PLAYER_CARD_CHECK = GamePhases.PLAYER_CARD_CHECK.value
-    PLAYER_PLACE_NEW_ARMIES = GamePhases.PLAYER_PLACE_NEW_ARMIES.value
-    PLAYER_ATTACKING = GamePhases.PLAYER_ATTACKING.value
-    PLAYER_FORTIFICATION = GamePhases.PLAYER_FORTIFICATION.value
-
-    PLAYER_ATTACKING_FROM = auto()
-    PLAYER_ATTACKING_TO = auto()
-    PLAYER_FORTIFICATION_FROM = auto()
-    PLAYER_FORTIFICATION_TO = auto()
-    PLAYER_CARD_PICK = auto()
-
-
-@unique
-class CardPhases(Enum):
-    PLAYER_CANT_USE_CARDS = auto()
-    PLAYER_CAN_USE_CARDS = auto()
-    PLAYER_MUST_USE_CARDS = auto()
 
 
 class Player:
@@ -149,12 +119,13 @@ class Player:
         return self.generic_selection(action_space, PlayerPhases.PLAYER_ATTACKING_FROM, "Attacks from")
 
     def select_attack_with(self, action_space):
-
-
         return self.generic_selection(action_space, PlayerPhases.PLAYER_ATTACKING_FROM, "Attacks with how many armies")
 
     def select_attack_to(self, action_space):
         return self.generic_selection(action_space, PlayerPhases.PLAYER_ATTACKING_TO, "Attacking")
+
+    def select_attack_move_post_win(self, action_space):
+        return self.generic_selection(action_space, PlayerPhases.PLAYER_MOVING_POST_WIN, "Move how many armies into new territory?")
 
     def select_fortification_from(self, action_space):
         return self.generic_selection(action_space, PlayerPhases.PLAYER_FORTIFICATION_FROM, "Fortifies from")
@@ -204,11 +175,11 @@ class Player:
         self.can_attack = list(can_attack)
         self.can_attack_from = list(can_attack_from)
 
-    def select_attack_to(self, territory_from_id):
+    def can_attack_to(self, territory_from_id):
         connected_territories = definitions.territory_neighbors[territory_from_id]
         valid_connections = set(connected_territories).difference(
             self.territory_ids)  # remove self-owned territories
-        return valid_connections
+        return list(valid_connections)
 
     def __lt__(self, other):
         return self.player_id < other.player_id
@@ -567,9 +538,25 @@ class Game:
         while len(player.can_attack_from) > 0:
             selected_territory_attack_from = player.select_attack_from(player.can_attack_from)
             selected_armies_attack_with = player.select_attack_with(list(range(1, self.world.territories[selected_territory_attack_from].max_attack_with()+1)))
-            selected_territory_to_attack = player.select_attack_to(territory_from_id)
-        # attackable_countries = flatten_list(
-        #     [definitions.territory_neighbors[territory_id] for territory_id in countries_with_two if territory_id not in player.territories_owned])
+            selected_territory_to_attack = player.select_attack_to(player.can_attack_to(selected_territory_attack_from))
+            self.resolve_attack(selected_territory_attack_from, selected_territory_to_attack, selected_armies_attack_with, player)
+            player.can_attack_to_from() # Update attack abilities after combat
+
+
+    def resolve_attack(self, territory_from, territory_to, with_armies, player):
+        defense_armies = self.world.territories[territory_to].num_armies
+        if defense_armies > 2:
+            defense_armies = 2
+        attack_losses, defense_losses = resolve_combat(with_armies, defense_armies)
+        self.world.territories[territory_from].num_armies -= attack_losses
+        self.world.territories[territory_to].num_armies -= defense_losses
+
+        if self.world.territories[territory_to].num_armies <= 0:
+            # if no armies or negative armies, this territory has changed owners
+            min_moving_armies = with_armies - attack_losses
+            max_moving_armies = self.world.territories[territory_from].num_armies-1
+            move_number = player.select_attack_move_post_win(list(range(min_moving_armies, max_moving_armies + 1)))
+            self.world.change_territory_owner(territory_to, player.player_id, move_number)
 
 
     def play_fortification_phase(self, player):
