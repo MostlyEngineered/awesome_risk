@@ -2,6 +2,7 @@ import pandas as pd
 from enum import Enum, auto, unique
 import random
 
+
 @unique
 class GamePhases(Enum):
     INITIAL_ARMY_PLACEMENT = auto()
@@ -10,6 +11,7 @@ class GamePhases(Enum):
     PLAYER_PLACE_NEW_ARMIES = auto()
     PLAYER_ATTACKING = auto()
     PLAYER_FORTIFICATION = auto()
+
 
 @unique
 class PlayerPhases(Enum):
@@ -28,11 +30,13 @@ class PlayerPhases(Enum):
     PLAYER_FORTIFICATION_TO = auto()
     PLAYER_CARD_PICK = auto()
 
+
 @unique
 class CardPhases(Enum):
     PLAYER_CANT_USE_CARDS = auto()
     PLAYER_CAN_USE_CARDS = auto()
     PLAYER_MUST_USE_CARDS = auto()
+
 
 @unique
 class CardType(Enum):
@@ -40,6 +44,7 @@ class CardType(Enum):
     CAVALRY = auto()
     ARTILLERY = auto()
     WILD = auto()
+
 
 territory_names = {
     0: "afghanistan",
@@ -245,7 +250,7 @@ territory_continents = {tid: cid for cid, tids in continent_territories.items() 
 
 player_colors = {0: "red", 1: "blue", 2: "green", 3: "yellow", 4: "pink", 5: "black", None: None}
 
-starting_armies = {1: 60, 2: 40, 3: 35, 4: 30, 5: 25, 6: 20} #1 case is for debugging
+starting_armies = {1: 60, 2: 40, 3: 35, 4: 30, 5: 25, 6: 20}  # 1 case is for debugging
 
 player_name_list = ["Jasper", "Bowser", "Fedora", "Winston", "Harris", "Chad", "Ash", "Bardock", "Hercule"]
 

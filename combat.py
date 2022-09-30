@@ -3,13 +3,16 @@ from logger_format import get_logger
 
 program_log = get_logger("ProgramLog", file_name="program_errors.txt", logging_level="error")
 
+
 def roll_dice(num_dice):
     """ roll number of dice """
     return [random.randint(1, 6) for x in range(num_dice)]
 
+
 def attack_dice_wins(attack_pips, defense_pips):
     """ compare pair of dice, defense wins ties"""
     return attack_pips > defense_pips
+
 
 def resolve_combat(num_attack_dice, num_defense_dice):
     """ resolve combat
@@ -36,9 +39,6 @@ def resolve_combat(num_attack_dice, num_defense_dice):
         else:
             defense_losses += 1
     return attack_losses, defense_losses
-
-
-
 
 
 if __name__ == "__main__":
