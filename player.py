@@ -89,7 +89,7 @@ class Player:
         return self.generic_selection(action_space, PlayerPhases.PLAYER_ATTACKING_FROM, "Attacks from")
 
     def select_attack_with(self, action_space):
-        return self.generic_selection(action_space, PlayerPhases.PLAYER_ATTACKING_FROM, "Attacks with how many armies")
+        return self.generic_selection(action_space, PlayerPhases.PLAYER_ATTACKING_WITH, "Attacks with how many armies")
 
     def select_attack_to(self, action_space):
         return self.generic_selection(action_space, PlayerPhases.PLAYER_ATTACKING_TO, "Attacking")
@@ -275,7 +275,7 @@ class Bot(Player):
                 try:
                     self.action_space.pop(self.action_space.index(-1)) # Remove not attacking
                     random.choice(self.action_space)
-                except KeyError:
+                except ValueError:
                     program_log("illegal op")
         return random.choice(self.action_space)
 

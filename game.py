@@ -143,7 +143,7 @@ class Game:
                 + ": has "
                 + str(army_count[player.player_id])
                 + " armies and "
-                + str(player.territories_owned)
+                + str(len(player.territories_owned))
                 + " territories"
             )
 
@@ -162,6 +162,8 @@ class Game:
             for player in self.players:
                 if player in self.players:  # Players can be eliminated out of list
                     self.play_player_turn(player)
+
+        game_log.info(self.players[0].get_player_tag() + " is the winner")
 
     def change_territory_owner(self, territory_id, owner_id, num_armies):
         """ Change territory owner and change number of armies in territory"""
@@ -279,6 +281,8 @@ class Game:
         self.game_phase = GamePhases.PLAYER_FORTIFICATION
         self.play_fortification_phase(player)
 
+        self.save_player_territories_owned()  # Recalculate to eliminate any players with no countries
+
     def play_attack_phase(self, player):
         player.can_attack_to_from()  # Update player attack to/from lists
         while len(player.can_attack_from) > 0:
@@ -354,6 +358,5 @@ if __name__ == "__main__":
     game_log.info("Initialize Session")
 
     game = Game()
-    # game.game_over = True
-    while not game.game_over:
-        game.play()
+
+    game.play()
