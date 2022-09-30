@@ -25,6 +25,7 @@ class PlayerPhases(Enum):
 
     PLAYER_ATTACKING_FROM = auto()
     PLAYER_ATTACKING_TO = auto()
+    PLAYER_ATTACKING_WITH = auto()
     PLAYER_MOVING_POST_WIN = auto()
     PLAYER_FORTIFICATION_FROM = auto()
     PLAYER_FORTIFICATION_TO = auto()

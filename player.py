@@ -270,6 +270,13 @@ class Bot(Player):
         self.bot_type = bot_type
 
     def get_player_feedback(self):
+        if self.player_state == PlayerPhases.PLAYER_ATTACKING_FROM:
+            if len(self.action_space) > 1: #Berzerker mode
+                try:
+                    self.action_space.pop(self.action_space.index(-1)) # Remove not attacking
+                    random.choice(self.action_space)
+                except KeyError:
+                    program_log("illegal op")
         return random.choice(self.action_space)
 
     # def get_player_feedback(self):

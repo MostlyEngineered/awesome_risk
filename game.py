@@ -78,6 +78,7 @@ class Game:
             "initial_army_placement_batch_size"
         ] = 1  # How many armies a player places at a time after initial country selection
         self.options["always_maximal_attack"] = True  # Game always attack with maximal force
+        self.options["berzerker_mode"] = True  # Disable passing attacking
 
         self.num_human_players = self.options["num_human_players"]
 
@@ -281,13 +282,16 @@ class Game:
     def play_attack_phase(self, player):
         player.can_attack_to_from()  # Update player attack to/from lists
         while len(player.can_attack_from) > 0:
+            player.player_state = PlayerPhases.PLAYER_ATTACKING_FROM
             selected_territory_attack_from = player.select_attack_from(player.can_attack_from)
             if selected_territory_attack_from == -1:
                 game_log.info("Ending attack phase")
                 break
+            player.player_state = PlayerPhases.PLAYER_ATTACKING_WITH
             selected_armies_attack_with = player.select_attack_with(
                 list(range(1, self.world.territories[selected_territory_attack_from].max_attack_with() + 1))
             )
+            player.player_state = PlayerPhases.PLAYER_ATTACKING_TO
             selected_territory_to_attack = player.select_attack_to(player.can_attack_to(selected_territory_attack_from))
             self.resolve_attack(
                 selected_territory_attack_from, selected_territory_to_attack, selected_armies_attack_with, player
@@ -304,6 +308,7 @@ class Game:
 
         if self.world.territories[territory_to].num_armies <= 0:
             # if no armies or negative armies, this territory has changed owners
+            player.player_state = PlayerPhases.PLAYER_MOVING_POST_WIN
             game_log.info(player.get_player_tag() + " wins territory " + str(territory_to))
             min_moving_armies = with_armies - attack_losses
             max_moving_armies = self.world.territories[territory_from].num_armies - 1
