@@ -3,7 +3,7 @@ import random
 import numpy as np
 
 import definitions
-from definitions import generate_random_name, PlayerPhases, CardPhases
+from definitions import generate_random_name, PlayerPhases, CardPhases, CardType
 
 # from game import game_log, program_log
 from logger_format import get_logger
@@ -18,8 +18,6 @@ class Player:
     def __init__(self, player_id, name) -> object:
         self.human = True
 
-        # TODO clean up initialization of Player, utilize the action_space in the code
-        # TODO organize Player code into separate file
         # TODO organize folder for bots to allow easier selection
 
         if name is None:
@@ -38,6 +36,7 @@ class Player:
         self.player_state = None  # Update from PlayerState Enum
         self.can_attack = []
         self.can_attack_from = []
+        self.territory_claimed_this_turn = False
 
     def get_player_tag(self):
         return "Player " + str(self.player_id) + " (" + self.name + ")"
@@ -108,11 +107,44 @@ class Player:
     def check_player_can_use_cards(self):
         if len(self.cards) >= 3:
             # Need at least 3 cards to be able to cash cards in
+            card_types = [card.card_type for card in self.cards]
+            card_hand = {}
+            card_hand[CardType.WILD] = 0
+            card_hand[CardType.INFANTRY] = 0
+            card_hand[CardType.CAVALRY] = 0
+            card_hand[CardType.ARTILLERY] = 0
 
-            # TODO finish implementation of this after territories can be conquered and gain cards
-            card_types = [card for card in self.cards]
+            for card in card_types:
+                card_hand[card] += 1
+
+            num_types = 0
+            for card_key in card_hand.keys():
+                if (card_hand[card_key] >= 1) and not (card_key == CardType.WILD):
+                    num_types += 1
+
+            valid_card_strategies = {}
+            self.card_usage_status = CardPhases.PLAYER_CANT_USE_CARDS
+            if (card_hand[CardType.INFANTRY] + card_hand[CardType.WILD]) >= 3:
+                valid_card_strategies[CardType.INFANTRY] = 1
+                self.card_usage_status = CardPhases.PLAYER_CAN_USE_CARDS
+            elif (card_hand[CardType.CAVALRY] + card_hand[CardType.WILD]) >= 3:
+                valid_card_strategies[CardType.CAVALRY] = 1
+                self.card_usage_status = CardPhases.PLAYER_CAN_USE_CARDS
+            elif (card_hand[CardType.ARTILLERY] + card_hand[CardType.WILD]) >= 3:
+                valid_card_strategies[CardType.ARTILLERY] = 1
+                self.card_usage_status = CardPhases.PLAYER_CAN_USE_CARDS
+            elif (num_types + card_hand[CardType.WILD]) >= 3:
+                valid_card_strategies["MIX"] = 1
+                self.card_usage_status = CardPhases.PLAYER_CAN_USE_CARDS
+
+            if len(self.cards) >= 5:
+                self.card_usage_status = CardPhases.PLAYER_MUST_USE_CARDS
+
+            return valid_card_strategies
+
         else:
             self.card_usage_status = CardPhases.PLAYER_CANT_USE_CARDS
+            return None
 
     def new_round_reserve_increase(self):
         continent_bonus = 0
@@ -228,14 +260,6 @@ class Human(Player):
             print_msg = "Select an army placement"
             return self.get_human_feedback(print_msg)
 
-        # elif game_state == PlayerPhases.PLAYER_ATTACKING: #This value should not be needed
-        #     print_msg = "Select a country to attack"
-        #     return self.get_human_feedback(print_msg)
-
-        # elif game_state == PlayerPhases.PLAYER_FORTIFICATION: #This value should not be needed
-        #     print_msg = "Select an army placement"
-        #     return self.get_human_feedback(print_msg)
-
         elif self.player_state == PlayerPhases.PLAYER_ATTACKING_FROM:
             print_msg = "Select a territory to attack from"
             return self.get_human_feedback(print_msg)
@@ -271,9 +295,9 @@ class Bot(Player):
 
     def get_player_feedback(self):
         if self.player_state == PlayerPhases.PLAYER_ATTACKING_FROM:
-            if len(self.action_space) > 1: #Berzerker mode
+            if len(self.action_space) > 1:  # Berzerker mode
                 try:
-                    self.action_space.pop(self.action_space.index(-1)) # Remove not attacking
+                    self.action_space.pop(self.action_space.index(-1))  # Remove not attacking
                     random.choice(self.action_space)
                 except ValueError:
                     program_log("illegal op")
@@ -287,10 +311,6 @@ class Bot(Player):
     #     elif self.player_state == PlayerPhases.PLAYER_CARD_CHECK:
     #         pass
     #     elif self.player_state == PlayerPhases.PLAYER_PLACE_NEW_ARMIES:
-    #         pass
-    #     elif self.player_state == PlayerPhases.PLAYER_ATTACKING:
-    #         pass
-    #     elif self.player_state == PlayerPhases.PLAYER_FORTIFICATION:
     #         pass
     #     elif self.player_state == PlayerPhases.PLAYER_ATTACKING_FROM:
     #         pass

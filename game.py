@@ -59,7 +59,9 @@ class Card:
 
 
 def create_territory_deck():
-    return [Card(card_num) for card_num in definitions.territory_cards.keys()]
+    card_deck = [Card(card_num) for card_num in definitions.territory_cards.keys()]
+    random.shuffle(card_deck)
+    return card_deck
 
 
 class Game:
@@ -98,6 +100,28 @@ class Game:
         self.current_game_action_space = []
         self.turn = 0
 
+    def play(self):
+        """ This is the basic game loop
+            Start initial setup phase and repeat player turns until game finished
+            Log winner at the end"""
+        self.play_initial_army_placement()
+        self.game_phase = GamePhases.INITIAL_ARMY_FORTIFICATION
+        self.play_initial_army_fortification()
+        self.save_player_territories_owned()
+
+        while not self.game_over:
+            self.turn += 1  # increment turn number
+            self.calculate_game_stats()
+            for player in self.players:
+                if player in self.players:  # Players can be eliminated out of list
+                    player.territory_claimed_this_turn = False
+                    self.play_player_turn(player)
+                    if player.territory_claimed_this_turn == True:
+                        # Give player a card
+                        self.deal_card_to_player(player)
+
+        game_log.info(self.players[0].get_player_tag() + " is the winner")
+
     def save_player_territories_owned(self):
         """ Save which territories are owned by whom (in Player objects)"""
         for player in self.players:
@@ -124,15 +148,6 @@ class Game:
                 if len(self.players) <= 1:
                     self.game_over = True
 
-    def count_armies(self):
-        army_count = {}
-        for player in self.players:
-            army_count[player.player_id] = 0
-
-        for territory in self.world.territories:
-            army_count[territory.owner_id] += territory.num_armies
-        return army_count
-
     def calculate_game_stats(self):
         self.save_player_territories_owned()
         game_log.info("Turn " + str(self.turn) + ": ")
@@ -147,23 +162,106 @@ class Game:
                 + " territories"
             )
 
+    def play_player_turn(self, player):
+        """ Play a player's normal turn
+            1) Calculate new army reserves
+            2) Check if the player can/wants to/must play cards and resolve cards
+            3) Place armies in players' territories
+            4) Player attacks until finished attacking (selects -1)
+            5) Player selects one fortification actions
+            6) Recalculate statistics (this will eliminate finished players)"""
+
+        # Calculate army reserve increase
+        player.new_round_reserve_increase()
+
+        self.game_phase = GamePhases.PLAYER_CARD_CHECK
+        self.play_card_phase(player)
+
+        self.game_phase = GamePhases.PLAYER_PLACE_NEW_ARMIES
+        self.play_place_new_armies(player)
+
+        self.game_phase = GamePhases.PLAYER_ATTACKING
+        self.play_attack_phase(player)
+
+        self.game_phase = GamePhases.PLAYER_FORTIFICATION
+        self.play_fortification_phase(player)
+
+        self.save_player_territories_owned()  # Recalculate to eliminate any players with no countries
+
+    def play_card_phase(self, player):
+        # TODO make sure player_state is accurate through this process
+        player.player_state = PlayerPhases.PLAYER_CARD_CHECK
+        player.check_player_can_use_cards()
+        if player.card_usage_status == CardPhases.PLAYER_CAN_USE_CARDS:
+            player_uses_cards = player.select_card_decision()  # action space for card decision is always Y/N (1/0)
+        else:
+            player_uses_cards = 0
+        while player_uses_cards or (player.card_usage_status == CardPhases.PLAYER_MUST_USE_CARDS):
+            # players can get enough for multiple exchanges if multiple players are eliminated
+            for i in range(3):
+                # TODO finish the card implementation
+                select_card = player.select_card_decision()
+                player.check_player_can_use_cards()
+                player_uses_cards = 0
+                if player.card_usage_status == CardPhases.PLAYER_CAN_USE_CARDS:
+                    player_uses_cards = player.select_card_decision(
+                        action_space=[]
+                    )  # TODO Need to calculate action space
+                if (not player_uses_cards) and (player.card_usage_status != CardPhases.PLAYER_MUST_USE_CARDS):
+                    break
+
+    def play_place_new_armies(self, player):
+        player.player_state = PlayerPhases.PLAYER_PLACE_NEW_ARMIES
+        while player.army_reserve > 0:
+            # New armies have to be placed in territories the player owns
+            selected_territory = player.place_new_armies(action_space=player.territory_ids)
+            player.army_reserve -= 1
+            self.world.territories[selected_territory].num_armies += 1
+
+    def play_attack_phase(self, player):
+        player.can_attack_to_from()  # Update player attack to/from lists
+        while len(player.can_attack_from) > 0:
+            player.player_state = PlayerPhases.PLAYER_ATTACKING_FROM
+            selected_territory_attack_from = player.select_attack_from(player.can_attack_from)
+            if selected_territory_attack_from == -1:
+                game_log.info("Ending attack phase")
+                break
+            player.player_state = PlayerPhases.PLAYER_ATTACKING_WITH
+            selected_armies_attack_with = player.select_attack_with(
+                list(range(1, self.world.territories[selected_territory_attack_from].max_attack_with() + 1))
+            )
+            player.player_state = PlayerPhases.PLAYER_ATTACKING_TO
+            selected_territory_to_attack = player.select_attack_to(player.can_attack_to(selected_territory_attack_from))
+            self.resolve_attack(
+                selected_territory_attack_from, selected_territory_to_attack, selected_armies_attack_with, player
+            )
+            player.can_attack_to_from()  # Update attack abilities after combat
+
+    def play_fortification_phase(self, player):
+        pass
+
+    def deal_card_to_player(self, player):
+        player.cards.append(self.card_deck.pop())
+        if len(self.card_deck) <= 0:
+            # reshuffle discard pile
+            self.card_deck = self.discard_pile
+            self.discard_pile = []
+            random.shuffle(self.card_deck)
+
+
+
+    def count_armies(self):
+        army_count = {}
+        for player in self.players:
+            army_count[player.player_id] = 0
+
+        for territory in self.world.territories:
+            army_count[territory.owner_id] += territory.num_armies
+        return army_count
+
     def calculate_game_army_reserves(self):
         """ Calculate if all army reserves have been placed"""
         self.game_army_reserves = sum([player.army_reserve for player in self.players])
-
-    def play(self):
-        self.play_initial_army_placement()
-        self.game_phase = GamePhases.INITIAL_ARMY_FORTIFICATION
-        self.play_initial_army_fortification()
-
-        while not self.game_over:
-            self.turn += 1  # increment turn number
-            self.calculate_game_stats()
-            for player in self.players:
-                if player in self.players:  # Players can be eliminated out of list
-                    self.play_player_turn(player)
-
-        game_log.info(self.players[0].get_player_tag() + " is the winner")
 
     def change_territory_owner(self, territory_id, owner_id, num_armies):
         """ Change territory owner and change number of armies in territory"""
@@ -263,44 +361,7 @@ class Game:
                 if self.game_army_reserves <= 0:
                     self.game_phase = GamePhases.PLAYER_PLACE_NEW_ARMIES
 
-    def play_player_turn(self, player):
 
-        # Calculate army reserve increase
-        self.save_player_territories_owned()
-        player.new_round_reserve_increase()
-
-        self.game_phase = GamePhases.PLAYER_CARD_CHECK
-        self.play_card_phase(player)
-
-        self.game_phase = GamePhases.PLAYER_PLACE_NEW_ARMIES
-        self.play_place_new_armies(player)
-
-        self.game_phase = GamePhases.PLAYER_ATTACKING
-        self.play_attack_phase(player)
-
-        self.game_phase = GamePhases.PLAYER_FORTIFICATION
-        self.play_fortification_phase(player)
-
-        self.save_player_territories_owned()  # Recalculate to eliminate any players with no countries
-
-    def play_attack_phase(self, player):
-        player.can_attack_to_from()  # Update player attack to/from lists
-        while len(player.can_attack_from) > 0:
-            player.player_state = PlayerPhases.PLAYER_ATTACKING_FROM
-            selected_territory_attack_from = player.select_attack_from(player.can_attack_from)
-            if selected_territory_attack_from == -1:
-                game_log.info("Ending attack phase")
-                break
-            player.player_state = PlayerPhases.PLAYER_ATTACKING_WITH
-            selected_armies_attack_with = player.select_attack_with(
-                list(range(1, self.world.territories[selected_territory_attack_from].max_attack_with() + 1))
-            )
-            player.player_state = PlayerPhases.PLAYER_ATTACKING_TO
-            selected_territory_to_attack = player.select_attack_to(player.can_attack_to(selected_territory_attack_from))
-            self.resolve_attack(
-                selected_territory_attack_from, selected_territory_to_attack, selected_armies_attack_with, player
-            )
-            player.can_attack_to_from()  # Update attack abilities after combat
 
     def resolve_attack(self, territory_from, territory_to, with_armies, player):
         defense_armies = self.world.territories[territory_to].num_armies
@@ -312,6 +373,7 @@ class Game:
 
         if self.world.territories[territory_to].num_armies <= 0:
             # if no armies or negative armies, this territory has changed owners
+            player.territory_claimed_this_turn = True
             player.player_state = PlayerPhases.PLAYER_MOVING_POST_WIN
             game_log.info(player.get_player_tag() + " wins territory " + str(territory_to))
             min_moving_armies = with_armies - attack_losses
@@ -320,38 +382,11 @@ class Game:
             self.world.change_territory_owner(territory_to, player.player_id, move_number)
             game_log.info(player.get_player_tag() + " moves " + str(move_number) + " to new territory")
 
-    def play_fortification_phase(self, player):
-        pass
 
-    def play_place_new_armies(self, player):
-        player.player_state = PlayerPhases.PLAYER_PLACE_NEW_ARMIES
-        while player.army_reserve > 0:
-            # New armies have to be placed in territories the player owns
-            selected_territory = player.place_new_armies(action_space=player.territory_ids)
-            player.army_reserve -= 1
-            self.world.territories[selected_territory].num_armies += 1
 
-    def play_card_phase(self, player):
-        # TODO make sure player_state is accurate through this process
-        player.player_state = PlayerPhases.PLAYER_CARD_CHECK
-        player.check_player_can_use_cards()
-        if player.card_usage_status == CardPhases.PLAYER_CAN_USE_CARDS:
-            player_uses_cards = player.select_card_decision()  # action space for card decision is always Y/N (1/0)
-        else:
-            player_uses_cards = 0
-        while player_uses_cards or (player.card_usage_status == CardPhases.PLAYER_MUST_USE_CARDS):
-            # players can get enough for multiple exchanges if multiple players are eliminated
-            for i in range(3):
-                # TODO finish the card implementation
-                select_card = player.select_card_decision()
-                player.check_player_can_use_cards()
-                player_uses_cards = 0
-                if player.card_usage_status == CardPhases.PLAYER_CAN_USE_CARDS:
-                    player_uses_cards = player.select_card_decision(
-                        action_space=[]
-                    )  # TODO Need to calculate action space
-                if (not player_uses_cards) and (player.card_usage_status != CardPhases.PLAYER_MUST_USE_CARDS):
-                    break
+
+
+
 
 
 if __name__ == "__main__":
