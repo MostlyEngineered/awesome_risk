@@ -28,6 +28,7 @@ class Player:
         self.player_id = player_id
         self.cards = []
         self.card_usage_status = None
+        self.card_strategies = None
 
         self.continents_owned = []
         self.territories_owned = []
@@ -76,9 +77,11 @@ class Player:
         )
 
     def select_card_decision(self, action_space=[1, 0]):
+        """ Decide if cards should be turned in (happens if hand is more than 3)"""
         return self.generic_selection(action_space, PlayerPhases.PLAYER_CARD_CHECK, "Selects to use cards")
 
     def select_cards_to_use(self, action_space):
+        """ Decide which card to turn in (happens 3 times after card_decision=y or forced to play cards)"""
         return self.generic_selection(action_space, PlayerPhases.PLAYER_CARD_PICK, "Selects card to use")
 
     def place_new_armies(self, action_space):

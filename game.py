@@ -4,7 +4,7 @@ import definitions
 from logger_format import get_logger
 from player import Human, Bot, Player
 from world import World
-from definitions import PlayerPhases, GamePhases, CardPhases
+from definitions import PlayerPhases, GamePhases, CardPhases, CardType
 import random
 from combat import resolve_combat
 
@@ -47,12 +47,20 @@ class Card:
         else:
             self.card_type = definitions.territory_cards[card_num]
 
-        if self.card_type == definitions.CardType.WILD:
+        if self.card_type == CardType.WILD:
             self.territory_id = None
             self.territory = None
         else:
             self.territory_id = card_num
             self.territory = definitions.territory_names[self.territory_id]
+
+        self.card_value = {CardType.CAVALRY: 0, CardType.INFANTRY: 0, CardType.ARTILLERY: 0}
+        if self.card_type == CardType.WILD or self.card_type == CardType.CAVALRY:
+            self.card_value[CardType.CAVALRY] = 1
+        if self.card_type == CardType.WILD or self.card_type == CardType.INFANTRY:
+            self.card_value[CardType.INFANTRY] = 1
+        if self.card_type == CardType.WILD or self.card_type == CardType.ARTILLERY:
+            self.card_value[CardType.ARTILLERY] = 1
 
     def __lt__(self, other):
         return self.card_num < other.card_num
@@ -65,6 +73,9 @@ def create_territory_deck():
 
 
 class Game:
+    # TODO finish card implementation
+    # TODO finish fortification phase implementation
+
     def __init__(self) -> object:
         self.options = {}
 
@@ -89,6 +100,7 @@ class Game:
 
         self.card_deck = create_territory_deck()
         self.discard_pile = []
+        self.playing_cards = []  # Temp list for playing cards
         self.army_bonus = calculate_next_army_bonus()
 
         self.world = World()
@@ -114,11 +126,8 @@ class Game:
             self.calculate_game_stats()
             for player in self.players:
                 if player in self.players:  # Players can be eliminated out of list
-                    player.territory_claimed_this_turn = False
                     self.play_player_turn(player)
-                    if player.territory_claimed_this_turn == True:
-                        # Give player a card
-                        self.deal_card_to_player(player)
+
 
         game_log.info(self.players[0].get_player_tag() + " is the winner")
 
@@ -140,13 +149,7 @@ class Game:
             if set(match_territories).issubset(set(player.territory_ids)):
                 player.continents_owned.append(continent)
 
-        for player in self.players:
-            if len(player.territories_owned) <= 0:
-                game_log.info(player.get_player_tag() + " has been eliminated")
-                player_game_index = self.players.index(player)
-                self.out_players.append(self.players.pop(player_game_index))
-                if len(self.players) <= 1:
-                    self.game_over = True
+
 
     def calculate_game_stats(self):
         self.save_player_territories_owned()
@@ -172,6 +175,9 @@ class Game:
             6) Recalculate statistics (this will eliminate finished players)"""
 
         # Calculate army reserve increase
+        player.territory_claimed_this_turn = False  # Reset conquer flag
+        player.received_bonus_army_this_turn = False  # Reset bonus army flag
+
         player.new_round_reserve_increase()
 
         self.game_phase = GamePhases.PLAYER_CARD_CHECK
@@ -186,29 +192,152 @@ class Game:
         self.game_phase = GamePhases.PLAYER_FORTIFICATION
         self.play_fortification_phase(player)
 
-        self.save_player_territories_owned()  # Recalculate to eliminate any players with no countries
+        if player.territory_claimed_this_turn == True:
+            self.deal_card_to_player(player)  # if player conquers, deal a card
+
+        self.save_player_territories_owned()  # Recalculate to eliminate any players with no countries #TODO this can be eliminated once game can be run through to check
+
+
 
     def play_card_phase(self, player):
         # TODO make sure player_state is accurate through this process
         player.player_state = PlayerPhases.PLAYER_CARD_CHECK
-        player.check_player_can_use_cards()
+        player.card_strategies = player.check_player_can_use_cards()
+
         if player.card_usage_status == CardPhases.PLAYER_CAN_USE_CARDS:
             player_uses_cards = player.select_card_decision()  # action space for card decision is always Y/N (1/0)
+
+            if player_uses_cards:
+                # If player chooses to use cards, send into select cards
+                player.card_usage_status = CardPhases.PLAYER_MUST_USE_CARDS
+
         else:
             player_uses_cards = 0
-        while player_uses_cards or (player.card_usage_status == CardPhases.PLAYER_MUST_USE_CARDS):
+
+        if player_uses_cards or (player.card_usage_status == CardPhases.PLAYER_MUST_USE_CARDS):
             # players can get enough for multiple exchanges if multiple players are eliminated
-            for i in range(3):
-                # TODO finish the card implementation
-                select_card = player.select_card_decision()
-                player.check_player_can_use_cards()
-                player_uses_cards = 0
-                if player.card_usage_status == CardPhases.PLAYER_CAN_USE_CARDS:
-                    player_uses_cards = player.select_card_decision(
-                        action_space=[]
-                    )  # TODO Need to calculate action space
-                if (not player_uses_cards) and (player.card_usage_status != CardPhases.PLAYER_MUST_USE_CARDS):
-                    break
+            self.player_claims_cards(player)
+            player.card_usage_status == CardPhases.PLAYER_CANT_USE_CARDS
+
+
+    def player_claims_cards(self, player):
+        """ Player is cashing in cards, consult strategies and cash in cards.
+            This function is single cash in, repeat as necessary"""
+        card_1 = self.pick_first_card(player)
+        card_2 = self.pick_second_card(player, card_1)
+        card_3 = self.pick_third_card(player, card_1, card_2)
+
+        if not player.received_bonus_army_this_turn:
+            bonus_options = [card.territory_id for card in [card_1, card_2, card_3] if card.territory_id in player.territories_owned]
+            if bonus_options:
+                bonus_choice = random.choice(bonus_options)  # TODO This should be a choice that the user makes (and can be a pass)
+                self.world.territories[bonus_choice].num_armies += 2
+                player.received_bonus_army_this_turn = True
+
+        self.discard_pile.append(player.cards.pop(player.cards.index(card_1)))
+        self.discard_pile.append(player.cards.pop(player.cards.index(card_2)))
+        self.discard_pile.append(player.cards.pop(player.cards.index(card_3)))
+
+        player.army_reserve += self.army_bonus
+        self.army_bonus = calculate_next_army_bonus(self.army_bonus)
+
+
+
+
+    def pick_first_card(self, player):
+        """ Have user select card index in hand, return the selected card"""
+        strategies = player.card_strategies
+        player_hand = player.cards
+        action_space = list()
+        valid_cards = list()
+
+        print("Player hand is: " + str(len(player.cards)))
+
+        valid_cards.append([card for card in player_hand if card.card_type is CardType.WILD])  # WILD always valid
+
+        if CardType.INFANTRY in strategies.keys():
+            valid_cards.append([card for card in player_hand if card.card_type is CardType.INFANTRY])
+
+        if CardType.CAVALRY in strategies.keys():
+            valid_cards.append([card for card in player_hand if card.card_type is CardType.CAVALRY])
+
+        if CardType.ARTILLERY in strategies.keys():
+            valid_cards.append([card for card in player_hand if card.card_type is CardType.ARTILLERY])
+
+        valid_cards = flatten_list(valid_cards)  # Flatten list and Eliminate duplicates
+        for card in valid_cards:
+            action_space.append(player_hand.index(card))
+
+        if "MIX" in strategies.keys():
+            # Allow any cards for first card if there's a mix strategy
+            # This overwrites the action_space in this case
+            action_space = list(range(len(player_hand)))
+
+        if len(action_space) <= 0:
+            print("Debugging comment, this will be an error")
+
+        selected_card_id = player.select_cards_to_use(action_space)
+        return player_hand[selected_card_id]
+
+    def pick_second_card(self, player, card_1):
+        """ Pick card that is consistent with strategy, but 1 card can work for mix or single type strategy"""
+        strategies = player.card_strategies
+        player_hand = player.cards
+        action_space = list()
+
+        valid_cards = [card for card in player_hand if card.card_type is CardType.WILD]  # WILD always valid
+
+        for card in player_hand:
+            if card == card_1:
+                continue
+            if CardType.INFANTRY in strategies.keys() and card.card_type == CardType.INFANTRY:
+                valid_cards.append(card)
+                continue
+            if (CardType.CAVALRY in strategies.keys()) and card.card_type == CardType.CAVALRY:
+                valid_cards.append(card)
+                continue
+            if CardType.ARTILLERY in strategies.keys() and card.card_type == CardType.ARTILLERY:
+                valid_cards.append(card)
+                continue
+            if "MIX" in strategies.keys() and card.card_type != card_1.card_type:
+                valid_cards.append(card)
+
+        action_space = [player_hand.index(card) for card in player_hand if card in valid_cards]
+
+        selected_card_id = player.select_cards_to_use(action_space)
+        return player_hand[selected_card_id]
+
+
+    def pick_third_card(self, player, card_1, card_2):
+        """ Continue strategy, but since 2 cards have been picked there is only 1 valid strategy"""
+        player_hand = player.cards
+        action_space = list()
+        valid_cards = list()
+
+        valid_cards.append([card for card in player_hand if card.card_type is CardType.WILD])  # WILD always valid
+
+        if card_1.card_type == card_2.card_type:
+            # Single type strategy, find only cards of this type
+            strategy_type = card_1.card_type
+        else:
+            # Mix strategy, find the type that doesn't match
+            all_types = set({CardType.INFANTRY, CardType.CAVALRY, CardType.ARTILLERY})
+            cur_types = set({card_1.card_type, card_2.card_type})
+            strategy_type = list(all_types.difference(cur_types))[0]
+
+        valid_cards.append([card for card in player_hand if card.card_type is strategy_type])
+
+        valid_cards = flatten_list(valid_cards)
+
+        for card in valid_cards:
+            if (card != card_1) and (card != card_2):
+                action_space.append(player_hand.index(card))
+
+        if len(valid_cards) <= 0:
+            print("Debugging, this will cause an error")
+
+        selected_card_id = player.select_cards_to_use(action_space)
+        return player_hand[selected_card_id]
 
     def play_place_new_armies(self, player):
         player.player_state = PlayerPhases.PLAYER_PLACE_NEW_ARMIES
@@ -247,8 +376,6 @@ class Game:
             self.card_deck = self.discard_pile
             self.discard_pile = []
             random.shuffle(self.card_deck)
-
-
 
     def count_armies(self):
         army_count = {}
@@ -298,7 +425,11 @@ class Game:
             self.world.territories[territory_id].num_armies = army_number
 
     def get_player(self, player_id):
-        player_index = self.players.index(player_id)
+        try:
+            player_index = self.players.index(player_id)
+        except ValueError:
+            print('Debugging excpet')  # TODO figure this error out
+            raise ValueError
         player = self.players[player_index]
         return player
 
@@ -373,20 +504,32 @@ class Game:
 
         if self.world.territories[territory_to].num_armies <= 0:
             # if no armies or negative armies, this territory has changed owners
-            player.territory_claimed_this_turn = True
-            player.player_state = PlayerPhases.PLAYER_MOVING_POST_WIN
-            game_log.info(player.get_player_tag() + " wins territory " + str(territory_to))
-            min_moving_armies = with_armies - attack_losses
-            max_moving_armies = self.world.territories[territory_from].num_armies - 1
-            move_number = player.select_attack_move_post_win(list(range(min_moving_armies, max_moving_armies + 1)))
-            self.world.change_territory_owner(territory_to, player.player_id, move_number)
-            game_log.info(player.get_player_tag() + " moves " + str(move_number) + " to new territory")
+            self.player_conquers_territory(attack_losses, player, territory_from, territory_to, with_armies)
 
+    def player_conquers_territory(self, attack_losses, player, territory_from, territory_to, with_armies):
+        player.territory_claimed_this_turn = True
+        defender_id = self.world.territories[territory_to].owner_id
+        is_defender_last_territory = len(self.get_player(defender_id).territories_owned) <= 1
 
+        player.player_state = PlayerPhases.PLAYER_MOVING_POST_WIN
+        game_log.info(player.get_player_tag() + " wins territory " + str(territory_to))
+        min_moving_armies = with_armies - attack_losses
+        max_moving_armies = self.world.territories[territory_from].num_armies - 1
+        move_number = player.select_attack_move_post_win(list(range(min_moving_armies, max_moving_armies + 1)))
 
+        self.world.change_territory_owner(territory_to, player.player_id, move_number)  # Change owner
+        self.save_player_territories_owned()  # Recalculate territories owned after owner change
+        game_log.info(player.get_player_tag() + " moves " + str(move_number) + " to new territory")
 
+        if is_defender_last_territory:
+            # Defender is eleminated, transfer cards to invader
+            for i in range(len(self.get_player(defender_id).cards)):
+                player.cards.append(self.get_player(defender_id).cards.pop())
 
-
+            game_log.info(player.get_player_tag() + " has been eliminated")
+            self.out_players.append(self.players.pop(defender_id))
+            if len(self.players) <= 1:
+                self.game_over = True
 
 
 if __name__ == "__main__":
