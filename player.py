@@ -29,6 +29,7 @@ class Player:
         self.cards = []
         self.card_usage_status = None
         self.card_strategies = None
+        self.received_bonus_army_this_turn = False
 
         self.continents_owned = []
         self.territories_owned = []
@@ -108,6 +109,8 @@ class Player:
         return self.generic_selection(action_space, PlayerPhases.PLAYER_FORTIFICATION_TO, "Fortifying")
 
     def check_player_can_use_cards(self):
+        """ Check if player can or must use cards at start of turn"""
+        # TODO this is failing picking up MIX with wilds with card_1 = wild
         if len(self.cards) >= 3:
             # Need at least 3 cards to be able to cash cards in
             card_types = [card.card_type for card in self.cards]
@@ -130,13 +133,13 @@ class Player:
             if (card_hand[CardType.INFANTRY] + card_hand[CardType.WILD]) >= 3:
                 valid_card_strategies[CardType.INFANTRY] = 1
                 self.card_usage_status = CardPhases.PLAYER_CAN_USE_CARDS
-            elif (card_hand[CardType.CAVALRY] + card_hand[CardType.WILD]) >= 3:
+            if (card_hand[CardType.CAVALRY] + card_hand[CardType.WILD]) >= 3:
                 valid_card_strategies[CardType.CAVALRY] = 1
                 self.card_usage_status = CardPhases.PLAYER_CAN_USE_CARDS
-            elif (card_hand[CardType.ARTILLERY] + card_hand[CardType.WILD]) >= 3:
+            if (card_hand[CardType.ARTILLERY] + card_hand[CardType.WILD]) >= 3:
                 valid_card_strategies[CardType.ARTILLERY] = 1
                 self.card_usage_status = CardPhases.PLAYER_CAN_USE_CARDS
-            elif (num_types + card_hand[CardType.WILD]) >= 3:
+            if (num_types + card_hand[CardType.WILD]) >= 3:
                 valid_card_strategies["MIX"] = 1
                 self.card_usage_status = CardPhases.PLAYER_CAN_USE_CARDS
 
@@ -144,6 +147,9 @@ class Player:
                 self.card_usage_status = CardPhases.PLAYER_MUST_USE_CARDS
 
             return valid_card_strategies
+
+            if card_hand[CardType.WILD] >= 1:
+                print("Debugging here")
 
         else:
             self.card_usage_status = CardPhases.PLAYER_CANT_USE_CARDS
@@ -301,9 +307,78 @@ class Bot(Player):
             if len(self.action_space) > 1:  # Berzerker mode
                 try:
                     self.action_space.pop(self.action_space.index(-1))  # Remove not attacking
-                    random.choice(self.action_space)
+                    return random.choice(self.action_space)
                 except ValueError:
                     program_log("illegal op")
+            if self.action_space == [-1]:
+                return self.action_space[0]
+
+        if self.player_state == PlayerPhases.PLAYER_ATTACKING_WITH:
+            if 3 in self.action_space:
+                return 3
+            elif 2 in self.action_space:
+                return 2
+
+
+        return random.choice(self.action_space)
+
+class BerzerkBot(Player):
+    """ Should implement method for bot to convert so that it is player 0 for training purposes"""
+
+    def __init__(self, player_id, name, bot_type):
+        super().__init__(player_id, name)
+        self.human = False
+        self.bot_type = bot_type
+
+    def get_player_feedback(self):
+        if self.player_state == PlayerPhases.PLAYER_ATTACKING_FROM:
+            if len(self.action_space) > 1:  # Berzerker mode
+                try:
+                    self.action_space.pop(self.action_space.index(-1))  # Remove not attacking
+                    return random.choice(self.action_space)
+                except ValueError:
+                    program_log("illegal op")
+            if self.action_space == [-1]:
+                return self.action_space[0]
+
+        if self.player_state == PlayerPhases.PLAYER_ATTACKING_WITH:
+            if 3 in self.action_space:
+                return 3
+            elif 2 in self.action_space:
+                return 2
+
+
+        return random.choice(self.action_space)
+
+
+class RandomBot(Player):
+    """ Should implement method for bot to convert so that it is player 0 for training purposes"""
+
+    def __init__(self, player_id, name, bot_type):
+        super().__init__(player_id, name)
+        self.human = False
+        self.bot_type = bot_type
+
+    def get_player_feedback(self):
+         return random.choice(self.action_space)
+
+
+class PacifistBot(Player):
+    """ Should implement method for bot to convert so that it is player 0 for training purposes"""
+
+    def __init__(self, player_id, name, bot_type):
+        super().__init__(player_id, name)
+        self.human = False
+        self.bot_type = bot_type
+
+    def get_player_feedback(self):
+        if self.player_state == PlayerPhases.PLAYER_ATTACKING_FROM:
+            if len(self.action_space) > 1:  # Berzerker mode
+                try:
+                    return -1  # Never attack
+                except ValueError:
+                    program_log("illegal op")
+
         return random.choice(self.action_space)
 
     # def get_player_feedback(self):

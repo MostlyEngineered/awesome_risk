@@ -2,7 +2,8 @@ import definitions
 
 # from world import CONNECT, AREAS, MAP, KEY
 from logger_format import get_logger
-from player import Human, Bot, Player
+# from player import Human, Bot, Player
+from player import *  # Import all bots from player
 from world import World
 from definitions import PlayerPhases, GamePhases, CardPhases, CardType
 import random
@@ -76,24 +77,10 @@ class Game:
     # TODO finish card implementation
     # TODO finish fortification phase implementation
 
-    def __init__(self) -> object:
-        self.options = {}
+    def __init__(self, game_options) -> object:
+        self.game_options = game_options
 
-        # self.options["num_human_players"] = 3  # Case for a human game
-        # self.options["computer_ai"] = []  # Case for a human game
-
-        self.options["num_human_players"] = 0  # Case for a bot game
-        self.options["computer_ai"] = ["random_ai", "random_ai", "random_ai"]  # Case for a bot game
-        # self.options["computer_ai"] = ["random_ai"]  # Case for a single bot game
-
-        self.options["autodeal_territories"] = False  # Normal game set this to false
-        self.options[
-            "initial_army_placement_batch_size"
-        ] = 1  # How many armies a player places at a time after initial country selection
-        self.options["always_maximal_attack"] = True  # Game always attack with maximal force
-        self.options["berzerker_mode"] = True  # Disable passing attacking
-
-        self.num_human_players = self.options["num_human_players"]
+        self.num_human_players = self.game_options["num_human_players"]
 
         self.game_phase = GamePhases.INITIAL_ARMY_PLACEMENT
         self.game_over = False
@@ -234,14 +221,18 @@ class Game:
                 self.world.territories[bonus_choice].num_armies += 2
                 player.received_bonus_army_this_turn = True
 
-        self.discard_pile.append(player.cards.pop(player.cards.index(card_1)))
-        self.discard_pile.append(player.cards.pop(player.cards.index(card_2)))
-        self.discard_pile.append(player.cards.pop(player.cards.index(card_3)))
+        try:
+            self.discard_pile.append(player.cards.pop(player.cards.index(card_1)))
+            self.discard_pile.append(player.cards.pop(player.cards.index(card_2)))
+            self.discard_pile.append(player.cards.pop(player.cards.index(card_3)))
+        except ValueError:
+            print("Debugging here")
+
+
+        print(player.get_player_tag() + " cashed in cards for " + str(self.army_bonus))
 
         player.army_reserve += self.army_bonus
         self.army_bonus = calculate_next_army_bonus(self.army_bonus)
-
-
 
 
     def pick_first_card(self, player):
@@ -285,7 +276,7 @@ class Game:
         player_hand = player.cards
         action_space = list()
 
-        valid_cards = [card for card in player_hand if card.card_type is CardType.WILD]  # WILD always valid
+        valid_cards = [card for card in player_hand if (card.card_type is CardType.WILD) and (card != card)]  # WILD always valid
 
         for card in player_hand:
             if card == card_1:
@@ -309,13 +300,12 @@ class Game:
 
 
     def pick_third_card(self, player, card_1, card_2):
-        """ Continue strategy, but since 2 cards have been picked there is only 1 valid strategy"""
+        """ Continue strategy, but since 2 cards have been picked there is only 1 valid strategy (unless there's a wild)"""
         player_hand = player.cards
         action_space = list()
         valid_cards = list()
 
         valid_cards.append([card for card in player_hand if card.card_type is CardType.WILD])  # WILD always valid
-
         if card_1.card_type == card_2.card_type:
             # Single type strategy, find only cards of this type
             strategy_type = card_1.card_type
@@ -324,17 +314,20 @@ class Game:
             all_types = set({CardType.INFANTRY, CardType.CAVALRY, CardType.ARTILLERY})
             cur_types = set({card_1.card_type, card_2.card_type})
             strategy_type = list(all_types.difference(cur_types))[0]
-
+            
         valid_cards.append([card for card in player_hand if card.card_type is strategy_type])
 
         valid_cards = flatten_list(valid_cards)
+
+        if card_1.card_type == CardType.WILD or card_2.card_type == CardType.WILD:
+            valid_cards = player_hand
 
         for card in valid_cards:
             if (card != card_1) and (card != card_2):
                 action_space.append(player_hand.index(card))
 
-        if len(valid_cards) <= 0:
-            print("Debugging, this will cause an error")
+        if len(action_space) <= 0:
+            print("Debugging here")
 
         selected_card_id = player.select_cards_to_use(action_space)
         return player_hand[selected_card_id]
@@ -405,8 +398,8 @@ class Game:
 
         players = [Human(i, None) for i in range(self.num_human_players)]
 
-        for comp_player in self.options["computer_ai"]:
-            players = players + [Bot(player_id=len(players), name=None, bot_type=comp_player)]
+        for comp_player in self.game_options["computer_ai"]:
+            players = players + [eval(comp_player)(player_id=len(players), name=None, bot_type=comp_player)]
         random.shuffle(players)
         return players
 
@@ -469,14 +462,14 @@ class Game:
             # Assign correct initial armies
             player.army_reserve = starting_armies
         self.world.update_world()
-        if self.options["autodeal_territories"]:
+        if self.game_options["autodeal_territories"]:
             self.autodeal_initial_placements()
         else:
             self.player_select_initial_placements()
 
     def play_initial_army_fortification(self):
         game_log.info("Start initial fortification")
-        batch_size = self.options["initial_army_placement_batch_size"]
+        batch_size = self.game_options["initial_army_placement_batch_size"]
         while game.game_phase == GamePhases.INITIAL_ARMY_FORTIFICATION:
             for player in self.players:
                 self.current_game_action_space = self.get_allowable_initial_fortifications(player.player_id)
@@ -535,6 +528,15 @@ class Game:
 if __name__ == "__main__":
     game_log.info("Initialize Session")
 
-    game = Game()
+    options = {"num_human_players": 0, "computer_ai": ["RandomBot", "PacifistBot", "PacifistBot"],
+                    "autodeal_territories": False, "initial_army_placement_batch_size": 1,
+                    "always_maximal_attack": True, "berzerker_mode": True}
+
+    # self.options["num_human_players"] = 3  # Case for a human game
+    # self.options["computer_ai"] = []  # Case for a human game
+
+    # self.options["computer_ai"] = ["random_ai"]  # Case for a single bot game
+
+    game = Game(options)
 
     game.play()
