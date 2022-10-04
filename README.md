@@ -1,5 +1,7 @@
 # Risk game designed for AI
 
+![Old school box](img/risk_game.jpeg)
+
 ## Ruleset
 
 Rules are designed on the original Risk Game, but planning on having a few different configurations that can be callable from a config file.  The idea is to make any level of AI automation programmable and abilities to skip the corner cases that almost never come up (like attacking with less than maximal force).
