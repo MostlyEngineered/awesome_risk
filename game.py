@@ -93,7 +93,7 @@ class Game:
 
         default_game_options = {"turn_limit": np.inf, "disable_cards": False, "always_maximal_attack": True,
                                 "autodeal_territories": False, "berzerker_mode": False,
-                                "initial_army_placement_batch_size": 1}
+                                "initial_army_placement_batch_size": 1, "headless": False}
 
         for option in default_game_options.keys():
             if option not in self.game_options.keys():
@@ -136,7 +136,7 @@ class Game:
                     self.play_player_turn(player)
 
             if self.turn >= self.game_options["turn_limit"]:
-                self.game_over = True
+                self.player_victory(draw=True)
                 game_log.info("Draw declared by turn limit")
 
 
@@ -162,10 +162,11 @@ class Game:
         self.plot_board()
 
     def initialize_board(self):
+        if not self.game_options["headless"]:
 
-        self.im = plt.imread(os.getcwd() + '/img/risk.png')
-        plt.figure(figsize=(16, 24))
-        _ = plt.imshow(self.im)
+            self.im = plt.imread(os.getcwd() + '/img/risk.png')
+            plt.figure(figsize=(16, 24))
+            _ = plt.imshow(self.im)
 
     def get_territory_names(self):
         return_str = str(territory_names).replace(", ","\n")
@@ -174,14 +175,15 @@ class Game:
 
     def plot_board(self):
         """ Plot the board. """
-        plt.clf()
-        plt.imshow(self.im)
-        plt.text(1, 340, s=self.territory_names_str, verticalalignment='top', fontsize=8)
-        self.plot_player_statistics()
-        for t in self.world.territories:
-            self.plot_single(t.territory_id, t.owner_id, t.num_armies)
-        plt.axis('off')
-        plt.pause(0.02)
+        if not self.game_options["headless"]:
+            plt.clf()
+            plt.imshow(self.im)
+            plt.text(1, 340, s=self.territory_names_str, verticalalignment='top', fontsize=8)
+            self.plot_player_statistics()
+            for t in self.world.territories:
+                self.plot_single(t.territory_id, t.owner_id, t.num_armies)
+            plt.axis('off')
+            plt.pause(0.02)
 
     def plot_player_statistics(self):
 
@@ -617,7 +619,19 @@ class Game:
             program_log.error('player elimination error')
             raise IndexError
         if len(self.players) <= 1:
-            self.game_over = True
+            self.player_victory()
+
+    def player_victory(self, draw=False):
+        total_x = 2000  # TODO replace these with dimensions of im
+        total_y = 1400
+
+        self.game_over = True
+        if draw:
+            player_text = "DRAW"
+        else:
+            player_text = self.players[0].get_player_tag() + "\nWINS"
+
+            plt.text(total_x/2., total_y/2., player_text, fontsize=45, horizontalalignment="center", verticalalignment="center")
 
 
 if __name__ == "__main__":
@@ -626,7 +640,7 @@ if __name__ == "__main__":
     options = {"num_human_players": 0, "computer_ai": ["BerzerkBot", "PacifistBot", "PacifistBot"],
                     "autodeal_territories": False, "initial_army_placement_batch_size": 1,
                     "always_maximal_attack": True, "berzerker_mode": True,
-                    "turn_limit": 1000}
+                    "turn_limit": 150, "headless": True}  # At current skill level if game hasn't ended by 150 turns it's probably not ending
 
     # self.options["num_human_players"] = 3  # Case for a human game
     # self.options["computer_ai"] = []  # Case for a human game

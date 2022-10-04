@@ -17,5 +17,21 @@ Bot behavior will be created by overriding the virtual get_player_feedback funct
 ## Usage
 Current usage is just running game.py (no argparse or config yet so configuration is just changing the dictionary in the main loop)
 
+
+
+# Fix it list (roughly in order)
+
+1) Implement OpenAI gym environment
+2) Print game summary
+3) Batch game statistics (run N games, winners/draws of games)
+
+- Make game_state for bot more organized
+
+
+
+
+
+
+
 #Credits
 Map and some plotting used from https://github.com/godatadriven/risk-analysis/
