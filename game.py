@@ -5,11 +5,18 @@ from logger_format import get_logger
 # from player import Human, Bot, Player
 from player import *  # Import all bots from player
 from world import World
-from definitions import PlayerPhases, GamePhases, CardPhases, CardType
+from definitions import PlayerPhases, GamePhases, CardPhases, CardType, territory_locations, territory_names
 import random
 from combat import resolve_combat
+import time
 
-game_log = get_logger("GameLog", file_name="game_log.txt", logging_level="info")
+import os
+
+import matplotlib
+matplotlib.use('TkAgg')
+import matplotlib.pyplot as plt
+
+game_log = get_logger("GameLog", file_name="game_log.txt", logging_level="info", clear_previous_logs=True)
 program_log = get_logger("ProgramLog", file_name="program_errors.txt", logging_level="error")
 CARD_DECK = definitions.territory_cards
 
@@ -53,7 +60,7 @@ class Card:
             self.territory = None
         else:
             self.territory_id = card_num
-            self.territory = definitions.territory_names[self.territory_id]
+            self.territory = territory_names[self.territory_id]
 
         self.card_value = {CardType.CAVALRY: 0, CardType.INFANTRY: 0, CardType.ARTILLERY: 0}
         if self.card_type == CardType.WILD or self.card_type == CardType.CAVALRY:
@@ -74,13 +81,21 @@ def create_territory_deck():
 
 
 class Game:
-    # TODO finish card implementation
+    # TODO add display
     # TODO finish fortification phase implementation
 
     def __init__(self, game_options) -> object:
         self.game_options = game_options
 
         self.num_human_players = self.game_options["num_human_players"]
+
+        default_game_options = {"turn_limit": np.inf, "disable_cards": False, "always_maximal_attack": True,
+                                "autodeal_territories": False, "berzerker_mode": False,
+                                "initial_army_placement_batch_size": 1}
+
+        for option in default_game_options.keys():
+            if option not in self.game_options.keys():
+                self.game_options[option] = default_game_options[option]
 
         self.game_phase = GamePhases.INITIAL_ARMY_PLACEMENT
         self.game_over = False
@@ -98,11 +113,14 @@ class Game:
         self.out_players = []
         self.current_game_action_space = []
         self.turn = 0
+        self.im = None
+        self.territory_names_str = self.get_territory_names()
 
     def play(self):
         """ This is the basic game loop
             Start initial setup phase and repeat player turns until game finished
             Log winner at the end"""
+        self.initialize_board()
         self.play_initial_army_placement()
         self.game_phase = GamePhases.INITIAL_ARMY_FORTIFICATION
         self.play_initial_army_fortification()
@@ -114,6 +132,10 @@ class Game:
             for player in self.players:
                 if player in self.players:  # Players can be eliminated out of list
                     self.play_player_turn(player)
+
+            if self.turn >= self.game_options["turn_limit"]:
+                self.game_over = True
+                game_log.info("Draw declared by turn limit")
 
 
         game_log.info(self.players[0].get_player_tag() + " is the winner")
@@ -135,8 +157,48 @@ class Game:
 
             if set(match_territories).issubset(set(player.territory_ids)):
                 player.continents_owned.append(continent)
+        self.plot_board()
+
+    def initialize_board(self):
+
+        self.im = plt.imread(os.getcwd() + '/img/risk.png')
+        plt.figure(figsize=(16, 24))
+        _ = plt.imshow(self.im)
+
+    def get_territory_names(self):
+        return_str = str(territory_names).replace(", ","\n")
+        return_str = return_str.replace("{", "").replace("}", "").replace("'", "")
+        return return_str
+
+    def plot_board(self):
+        """ Plot the board. """
+        plt.clf()
+        plt.imshow(self.im)
+        plt.text(1, 400, s=self.territory_names_str, verticalalignment='top')
+        for t in self.world.territories:
+            self.plot_single(t.territory_id, t.owner_id, t.num_armies)
+        plt.axis('off')
+        plt.pause(0.02)
 
 
+    @staticmethod
+    def plot_single(territory_id, player_id, armies):
+        """
+        Plot a single army dot.
+
+        Args:
+            territory_id (int): the id of the territory to plot,
+            player_id (int): the player id of the owner,
+            armies (int): the number of armies.
+        """
+        coor = territory_locations[territory_id]
+        plt.scatter([coor[0] * 1.2], [coor[1] * 1.22], s=1250, c=definitions.player_colors[player_id])
+        plt.text(coor[0] * 1.2, coor[1] * 1.22 + 25, s=str(armies),
+                 color='black' if definitions.player_colors[player_id] in ['yellow', 'pink'] else 'white',
+                 ha='center', size=30)
+        plt.text(coor[0] * 1.2, (coor[1] * 1.22 + 25) + 10, s=str(territory_id),
+                 color='black' if definitions.player_colors[player_id] in ['yellow', 'pink'] else 'white',
+                 ha='center', size=10)
 
     def calculate_game_stats(self):
         self.save_player_territories_owned()
@@ -314,7 +376,7 @@ class Game:
             all_types = set({CardType.INFANTRY, CardType.CAVALRY, CardType.ARTILLERY})
             cur_types = set({card_1.card_type, card_2.card_type})
             strategy_type = list(all_types.difference(cur_types))[0]
-            
+
         valid_cards.append([card for card in player_hand if card.card_type is strategy_type])
 
         valid_cards = flatten_list(valid_cards)
@@ -363,12 +425,13 @@ class Game:
         pass
 
     def deal_card_to_player(self, player):
-        player.cards.append(self.card_deck.pop())
-        if len(self.card_deck) <= 0:
-            # reshuffle discard pile
-            self.card_deck = self.discard_pile
-            self.discard_pile = []
-            random.shuffle(self.card_deck)
+        if not self.game_options["disable_cards"]:  # if cards have been disabled, don't deal cards ever
+            player.cards.append(self.card_deck.pop())
+            if len(self.card_deck) <= 0:
+                # reshuffle discard pile
+                self.card_deck = self.discard_pile
+                self.discard_pile = []
+                random.shuffle(self.card_deck)
 
     def count_armies(self):
         army_count = {}
@@ -418,13 +481,16 @@ class Game:
             self.world.territories[territory_id].num_armies = army_number
 
     def get_player(self, player_id):
-        try:
-            player_index = self.players.index(player_id)
-        except ValueError:
-            print('Debugging excpet')  # TODO figure this error out
-            raise ValueError
-        player = self.players[player_index]
-        return player
+        for _ in range(3):
+            try:
+                player_index = self.players.index(player_id)
+                player = self.players[player_index]
+                return player
+
+            except ValueError:
+                program_log.error('This ValueError occurs but in debugger evaluates')  # TODO figure this error out
+        raise ValueError
+
 
     def get_allowable_initial_fortifications(self, player_id):
         return [territory.territory_id for territory in self.world.territories if territory.owner_id == player_id]
@@ -502,6 +568,7 @@ class Game:
     def player_conquers_territory(self, attack_losses, player, territory_from, territory_to, with_armies):
         player.territory_claimed_this_turn = True
         defender_id = self.world.territories[territory_to].owner_id
+        defending_player = self.get_player(defender_id)
         is_defender_last_territory = len(self.get_player(defender_id).territories_owned) <= 1
 
         player.player_state = PlayerPhases.PLAYER_MOVING_POST_WIN
@@ -516,27 +583,38 @@ class Game:
 
         if is_defender_last_territory:
             # Defender is eleminated, transfer cards to invader
-            for i in range(len(self.get_player(defender_id).cards)):
-                player.cards.append(self.get_player(defender_id).cards.pop())
+            self.eliminate_player(player, defending_player)
 
-            game_log.info(player.get_player_tag() + " has been eliminated")
-            self.out_players.append(self.players.pop(defender_id))
-            if len(self.players) <= 1:
-                self.game_over = True
+    def eliminate_player(self, attacking_player, eliminated_player):
+        defender_id = eliminated_player.player_id
+        for i in range(len(eliminated_player.cards)):
+            attacking_player.cards.append(self.get_player(defender_id).cards.pop())   #TODO replace with player elimination method
+
+        game_log.info(eliminated_player.get_player_tag() + " has been eliminated")
+        defender_index = self.players.index(eliminated_player)
+        try:
+            self.out_players.append(self.players.pop(defender_index))
+        except IndexError:
+            program_log.error('player elimination error')
+            raise IndexError
+        if len(self.players) <= 1:
+            self.game_over = True
 
 
 if __name__ == "__main__":
     game_log.info("Initialize Session")
 
-    options = {"num_human_players": 0, "computer_ai": ["RandomBot", "PacifistBot", "PacifistBot"],
+    options = {"num_human_players": 0, "computer_ai": ["BerzerkBot", "PacifistBot", "PacifistBot"],
                     "autodeal_territories": False, "initial_army_placement_batch_size": 1,
-                    "always_maximal_attack": True, "berzerker_mode": True}
+                    "always_maximal_attack": True, "berzerker_mode": True,
+                    "turn_limit": 1000}
 
     # self.options["num_human_players"] = 3  # Case for a human game
     # self.options["computer_ai"] = []  # Case for a human game
 
     # self.options["computer_ai"] = ["random_ai"]  # Case for a single bot game
+    number_of_games = 20
+    for game_iteration in range(number_of_games):
+        game = Game(options)
 
-    game = Game(options)
-
-    game.play()
+        game.play()

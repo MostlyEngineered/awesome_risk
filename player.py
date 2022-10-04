@@ -373,7 +373,7 @@ class PacifistBot(Player):
 
     def get_player_feedback(self):
         if self.player_state == PlayerPhases.PLAYER_ATTACKING_FROM:
-            if len(self.action_space) > 1:  # Berzerker mode
+            if len(self.action_space) > 1:  # Pacifist mode
                 try:
                     return -1  # Never attack
                 except ValueError:

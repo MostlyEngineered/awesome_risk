@@ -38,14 +38,12 @@ class CardPhases(Enum):
     PLAYER_CAN_USE_CARDS = auto()
     PLAYER_MUST_USE_CARDS = auto()
 
-
 @unique
 class CardType(Enum):
     INFANTRY = auto()
     CAVALRY = auto()
     ARTILLERY = auto()
     WILD = auto()
-
 
 territory_names = {
     0: "afghanistan",

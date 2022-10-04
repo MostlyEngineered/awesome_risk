@@ -8,7 +8,7 @@ echo "Run coverage test"
 coverage erase
 rm -rf htmlcov
 pwd
-coverage run --source=./testing --omit=testing/*,*__init__.py -m unittest
+coverage run --source=.. --omit=testing/*,*__init__.py -m unittest
 
 coverage html -i
 ls -a
