@@ -39,6 +39,9 @@ class Player:
         self.can_attack = []
         self.can_attack_from = []
         self.territory_claimed_this_turn = False
+        self.continent_bonus = None
+        self.territory_bonus = None
+        self.army_rate = None
 
     def get_player_tag(self):
         return "Player " + str(self.player_id) + " (" + self.name + ")"
@@ -156,16 +159,18 @@ class Player:
             return None
 
     def new_round_reserve_increase(self):
-        continent_bonus = 0
-        territory_bonus = int(np.floor(len(self.territories_owned) / 3))
-        if territory_bonus < 3:
-            territory_bonus = 3
+        self.continent_bonus = 0
+        self.territory_bonus = int(np.floor(len(self.territories_owned) / 3))
+        if self.territory_bonus < 3:
+            self.territory_bonus = 3
 
         for continent in self.continents_owned:
-            continent_bonus += definitions.continent_bonuses[continent]
+            self.continent_bonus += definitions.continent_bonuses[continent]
 
-        self.army_reserve = territory_bonus + continent_bonus
+        self.army_rate = self.territory_bonus + self.continent_bonus
+        self.army_reserve = self.army_rate
         game_log.info(self.get_player_tag() + " New turn bonus armies: " + str(self.army_reserve))
+
 
     def can_attack_to_from(self):
         territories_with_two = [

@@ -1,3 +1,5 @@
+import numpy as np
+
 import definitions
 
 # from world import CONNECT, AREAS, MAP, KEY
@@ -174,11 +176,28 @@ class Game:
         """ Plot the board. """
         plt.clf()
         plt.imshow(self.im)
-        plt.text(1, 400, s=self.territory_names_str, verticalalignment='top')
+        plt.text(1, 340, s=self.territory_names_str, verticalalignment='top', fontsize=8)
+        self.plot_player_statistics()
         for t in self.world.territories:
             self.plot_single(t.territory_id, t.owner_id, t.num_armies)
         plt.axis('off')
         plt.pause(0.02)
+
+    def plot_player_statistics(self):
+
+        x_start = 400
+        y_start = 1350
+        x_end = 1600
+
+        x_placements = np.linspace(x_start, x_end, len(self.players)+1)
+
+        for i, player in enumerate(self.players):
+            player_text = player.get_player_tag()
+            player_text = player_text + ("\nRound Bonus: " + str(player.army_rate))
+            player_text = player_text + ("\nTerritories: " + str(len(player.territories_owned)))
+            player_text = player_text + ("\nContinents: " + str(len(player.continents_owned)))
+            x_text = (x_placements[i] + x_placements[i+1])/2
+            plt.text(x_text, y_start, player_text, fontsize=9, verticalalignment='top', horizontalalignment='center')
 
 
     @staticmethod
@@ -389,7 +408,7 @@ class Game:
                 action_space.append(player_hand.index(card))
 
         if len(action_space) <= 0:
-            print("Debugging here")
+            print("Debugging here, this evaluates to False sometimes")
 
         selected_card_id = player.select_cards_to_use(action_space)
         return player_hand[selected_card_id]
