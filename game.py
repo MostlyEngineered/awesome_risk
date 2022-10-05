@@ -83,9 +83,8 @@ def create_territory_deck():
 
 
 class Game:
-    # TODO add display
-    # TODO finish fortification phase implementation
-
+    # TODO make sure action_space for players is updated consistently
+    # TODO make sure game_state and player_state are updated consistently
     def __init__(self, game_options) -> object:
         self.game_options = game_options
 
@@ -118,6 +117,7 @@ class Game:
         self.turn = 0
         self.im = None
         self.territory_names_str = self.get_territory_names()
+        self.current_player = None
 
     def play(self):
         """ This is the basic game loop
@@ -133,6 +133,7 @@ class Game:
             self.turn += 1  # increment turn number
             self.calculate_game_stats()
             for player in self.players:
+                self.current_player = player
                 if player in self.players:  # Players can be eliminated out of list
                     self.play_player_turn(player)
 
@@ -181,6 +182,10 @@ class Game:
             plt.imshow(self.im)
             plt.text(1, 340, s=self.territory_names_str, verticalalignment='top', fontsize=8)
             self.plot_player_statistics()
+            game_phase_str = "Turn: " + str(self.turn) + "\n" + self.game_phase.name
+            if self.current_player is not None:
+                game_phase_str = game_phase_str + "\n" + self.current_player.get_player_tag()
+            plt.text(1860, 650, game_phase_str, verticalalignment='top', horizontalalignment='center', fontsize=9)
             for t in self.world.territories:
                 self.plot_single(t.territory_id, t.owner_id, t.num_armies)
             plt.axis('off')
@@ -447,7 +452,11 @@ class Game:
         """ Select fortification from, with, and to (in that order)"""
         player.calculate_can_fortify_from()
         fortify_from_territory_id = player.select_fortification_from(player.can_fortify_from)
+        if fortify_from_territory_id == -1:
+            game_log.info(player.get_player_tag() + " Skipping fortification")
+            return
 
+        print('Territory has: ' + str(self.world.territories[fortify_from_territory_id].num_armies))
         available_armies = self.world.territories[fortify_from_territory_id].num_armies - 1  # 1 army must be left behind
         if self.game_options["fortification_limit"] is not None:
             if available_armies > self.game_options["fortification_limit"]:
@@ -661,7 +670,7 @@ if __name__ == "__main__":
     options = {"num_human_players": 0, "computer_ai": ["BerzerkBot", "PacifistBot", "PacifistBot"],
                     "autodeal_territories": False, "initial_army_placement_batch_size": 1,
                     "always_maximal_attack": True, "berzerker_mode": True,
-                    "turn_limit": 150, "headless": True}  # At current skill level if game hasn't ended by 150 turns it's probably not ending
+                    "turn_limit": 150, "headless": False}  # At current skill level if game hasn't ended by 150 turns it's probably not ending
 
     # self.options["num_human_players"] = 3  # Case for a human game
     # self.options["computer_ai"] = []  # Case for a human game

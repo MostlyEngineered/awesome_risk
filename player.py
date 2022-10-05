@@ -181,10 +181,12 @@ class Player:
         # Calculate player's territories that can move at least 1 army (ie have 2)
         fortification_capable = [territory.territory_id for territory in self.territories_owned if territory.num_armies >= 2]
         owner_ids = [territory.territory_id for territory in self.territories_owned]
-        for i, territory_id in enumerate(fortification_capable):
+        exclude_set = set()
+        for territory_id in fortification_capable:
             neighbor_ids = definitions.territory_neighbors[territory_id]
             if len(set(neighbor_ids).intersection(set(owner_ids))) == 0:
-                fortification_capable.pop(i)  # if the territory has no friendly neighbors it can't fortify anything
+                exclude_set.add(territory_id)  # if the territory has no friendly neighbors it can't fortify anything
+        fortification_capable = list(set(fortification_capable) - exclude_set)
         self.can_fortify_from = [-1] + fortification_capable  # You never have to fortify so -1 is always an option
 
     def calculate_can_fortify(self):
