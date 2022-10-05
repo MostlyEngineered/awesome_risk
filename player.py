@@ -38,6 +38,8 @@ class Player:
         self.player_state = None  # Update from PlayerState Enum
         self.can_attack = []
         self.can_attack_from = []
+        self.can_fortify = []
+        self.can_fortify_from = []
         self.territory_claimed_this_turn = False
         self.continent_bonus = None
         self.territory_bonus = None
@@ -106,7 +108,11 @@ class Player:
         )
 
     def select_fortification_from(self, action_space):
+        action_space = [-1] + action_space
         return self.generic_selection(action_space, PlayerPhases.PLAYER_FORTIFICATION_FROM, "Fortifies from")
+
+    def select_fortification_with(self, action_space):
+        return self.generic_selection(action_space, PlayerPhases.PLAYER_FORTIFICATION_WITH, "Fortifying")
 
     def select_fortification_to(self, action_space):
         return self.generic_selection(action_space, PlayerPhases.PLAYER_FORTIFICATION_TO, "Fortifying")
@@ -171,8 +177,22 @@ class Player:
         self.army_reserve = self.army_rate
         game_log.info(self.get_player_tag() + " New turn bonus armies: " + str(self.army_reserve))
 
+    def calculate_can_fortify_from(self):
+        # Calculate player's territories that can move at least 1 army (ie have 2)
+        fortification_capable = [territory.territory_id for territory in self.territories_owned if territory.num_armies >= 2]
+        owner_ids = [territory.territory_id for territory in self.territories_owned]
+        for i, territory_id in enumerate(fortification_capable):
+            neighbor_ids = definitions.territory_neighbors[territory_id]
+            if len(set(neighbor_ids).intersection(set(owner_ids))) == 0:
+                fortification_capable.pop(i)  # if the territory has no friendly neighbors it can't fortify anything
+        self.can_fortify_from = [-1] + fortification_capable  # You never have to fortify so -1 is always an option
 
-    def can_attack_to_from(self):
+    def calculate_can_fortify(self):
+
+
+        self.can_fortify = []
+
+    def calculate_can_attack_to_from(self):
         territories_with_two = [
             territory.territory_id for territory in self.territories_owned if territory.num_armies >= 2
         ]
@@ -195,7 +215,7 @@ class Player:
         self.can_attack = list(can_attack)
         self.can_attack_from = list(can_attack_from)
 
-    def can_attack_to(self, territory_from_id):
+    def calculate_can_attack_to(self, territory_from_id):
         connected_territories = definitions.territory_neighbors[territory_from_id]
         valid_connections = set(connected_territories).difference(self.territory_ids)  # remove self-owned territories
         return list(valid_connections)

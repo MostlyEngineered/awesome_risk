@@ -93,7 +93,8 @@ class Game:
 
         default_game_options = {"turn_limit": np.inf, "disable_cards": False, "always_maximal_attack": True,
                                 "autodeal_territories": False, "berzerker_mode": False,
-                                "initial_army_placement_batch_size": 1, "headless": False}
+                                "initial_army_placement_batch_size": 1, "headless": False,
+                                "fortification_limit": 100}
 
         for option in default_game_options.keys():
             if option not in self.game_options.keys():
@@ -424,7 +425,7 @@ class Game:
             self.world.territories[selected_territory].num_armies += 1
 
     def play_attack_phase(self, player):
-        player.can_attack_to_from()  # Update player attack to/from lists
+        player.calculate_can_attack_to_from()  # Update player attack to/from lists
         while len(player.can_attack_from) > 0:
             player.player_state = PlayerPhases.PLAYER_ATTACKING_FROM
             selected_territory_attack_from = player.select_attack_from(player.can_attack_from)
@@ -436,14 +437,34 @@ class Game:
                 list(range(1, self.world.territories[selected_territory_attack_from].max_attack_with() + 1))
             )
             player.player_state = PlayerPhases.PLAYER_ATTACKING_TO
-            selected_territory_to_attack = player.select_attack_to(player.can_attack_to(selected_territory_attack_from))
+            selected_territory_to_attack = player.select_attack_to(player.calculate_can_attack_to(selected_territory_attack_from))
             self.resolve_attack(
                 selected_territory_attack_from, selected_territory_to_attack, selected_armies_attack_with, player
             )
-            player.can_attack_to_from()  # Update attack abilities after combat
+            player.calculate_can_attack_to_from()  # Update attack abilities after combat
 
     def play_fortification_phase(self, player):
-        pass
+        """ Select fortification from, with, and to (in that order)"""
+        player.calculate_can_fortify_from()
+        fortify_from_territory_id = player.select_fortification_from(player.can_fortify_from)
+
+        available_armies = self.world.territories[fortify_from_territory_id].num_armies - 1  # 1 army must be left behind
+        if self.game_options["fortification_limit"] is not None:
+            if available_armies > self.game_options["fortification_limit"]:
+                available_armies = self.game_options["fortification_limit"]
+
+        fortify_with_options = list(range(1, available_armies+1))  # Must fortify with at least 1 army
+        selected_with_armies = player.select_fortification_with(fortify_with_options)
+
+        friendly_neighbors = definitions.territory_neighbors[fortify_from_territory_id]
+        owner_ids = [territory.territory_id for territory in player.territories_owned]
+        fortifiable_neighbors = [territory_id for territory_id in friendly_neighbors if territory_id in owner_ids]
+        fortify_to_territory_id = player.select_fortification_to(fortifiable_neighbors)
+
+        # Execute the fortification
+        self.adjust_territory_army_number(fortify_from_territory_id, selected_with_armies * -1, addition_mode=True)
+        self.adjust_territory_army_number(fortify_to_territory_id, selected_with_armies, addition_mode=True)
+
 
     def deal_card_to_player(self, player):
         if not self.game_options["disable_cards"]:  # if cards have been disabled, don't deal cards ever
