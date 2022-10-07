@@ -189,6 +189,8 @@ class Player:
         fortification_capable = list(set(fortification_capable) - exclude_set)
         self.can_fortify_from = [-1] + fortification_capable  # You never have to fortify so -1 is always an option
 
+        return self.can_fortify_from
+
     def calculate_can_fortify(self):
 
 
@@ -292,6 +294,10 @@ class Human(Player):
             print_msg = "Would you like to exchange cards for armies (Y/N, 1/0)?"
             return self.get_human_feedback(print_msg)
 
+        elif self.player_state == PlayerPhases.PLAYER_CARD_PICK:
+            print_msg = "Select a card"
+            return self.get_human_feedback(print_msg)
+
         elif self.player_state == PlayerPhases.PLAYER_PLACE_NEW_ARMIES:
             print_msg = "Select an army placement"
             return self.get_human_feedback(print_msg)
@@ -312,9 +318,7 @@ class Human(Player):
             print_msg = "Select a territory to fortify to"
             return self.get_human_feedback(print_msg)
 
-        elif self.player_state == PlayerPhases.PLAYER_CARD_PICK:
-            print_msg = "Select a card"
-            return self.get_human_feedback(print_msg)
+
 
         else:
             game_log.error("Invalid player state selected: " + str(self.player_state) + " (player_state)")

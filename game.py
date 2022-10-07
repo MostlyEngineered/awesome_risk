@@ -1,10 +1,6 @@
 import numpy as np
-
 import definitions
-
-# from world import CONNECT, AREAS, MAP, KEY
 from logger_format import get_logger
-# from player import Human, Bot, Player
 from player import *  # Import all bots from player
 from world import World
 from definitions import PlayerPhases, GamePhases, CardPhases, CardType, territory_locations, territory_names
@@ -93,7 +89,7 @@ class Game:
         default_game_options = {"turn_limit": np.inf, "disable_cards": False, "always_maximal_attack": True,
                                 "autodeal_territories": False, "berzerker_mode": False,
                                 "initial_army_placement_batch_size": 1, "headless": False,
-                                "fortification_limit": 100}
+                                "fortification_limit": 100, "bot_sleep": None}
 
         for option in default_game_options.keys():
             if option not in self.game_options.keys():
@@ -113,7 +109,6 @@ class Game:
         self.num_players = len(self.players)  # turn order is order in list
         self.game_army_reserves = 0
         self.out_players = []
-        self.current_game_action_space = []
         self.turn = 0
         self.im = None
         self.territory_names_str = self.get_territory_names()
@@ -184,7 +179,7 @@ class Game:
             self.plot_player_statistics()
             game_phase_str = "Turn: " + str(self.turn) + "\n" + self.game_phase.name
             if self.current_player is not None:
-                game_phase_str = game_phase_str + "\n" + self.current_player.get_player_tag()
+                game_phase_str = game_phase_str + "\n" + self.current_player.player_state.name + "\n" + self.current_player.get_player_tag()
             plt.text(1860, 650, game_phase_str, verticalalignment='top', horizontalalignment='center', fontsize=9)
             for t in self.world.territories:
                 self.plot_single(t.territory_id, t.owner_id, t.num_armies)
@@ -228,6 +223,7 @@ class Game:
                  ha='center', size=10)
 
     def calculate_game_stats(self):
+        """ Calculate game stats to report to log"""
         self.save_player_territories_owned()
         game_log.info("Turn " + str(self.turn) + ": ")
         army_count = self.count_armies()
@@ -276,7 +272,10 @@ class Game:
 
 
     def play_card_phase(self, player):
-        # TODO make sure player_state is accurate through this process
+        """ Play card phase
+            1) Calculate if cards can/must be redeemed
+            2) If player can, ask if they want to redeem cards
+            3) If redemption is selected, player chooses cards"""
         player.player_state = PlayerPhases.PLAYER_CARD_CHECK
         player.card_strategies = player.check_player_can_use_cards()
 
@@ -292,6 +291,7 @@ class Game:
 
         if player_uses_cards or (player.card_usage_status == CardPhases.PLAYER_MUST_USE_CARDS):
             # players can get enough for multiple exchanges if multiple players are eliminated
+            player.player_state = PlayerPhases.PLAYER_CARD_PICK
             self.player_claims_cards(player)
             player.card_usage_status == CardPhases.PLAYER_CANT_USE_CARDS
 
@@ -356,7 +356,8 @@ class Game:
         if len(action_space) <= 0:
             print("Debugging comment, this will be an error")
 
-        selected_card_id = player.select_cards_to_use(action_space)
+        player.action_space = action_space
+        selected_card_id = player.select_cards_to_use(player.action_space)
         return player_hand[selected_card_id]
 
     def pick_second_card(self, player, card_1):
@@ -382,9 +383,9 @@ class Game:
             if "MIX" in strategies.keys() and card.card_type != card_1.card_type:
                 valid_cards.append(card)
 
-        action_space = [player_hand.index(card) for card in player_hand if card in valid_cards]
+        player.action_space = [player_hand.index(card) for card in player_hand if card in valid_cards]
 
-        selected_card_id = player.select_cards_to_use(action_space)
+        selected_card_id = player.select_cards_to_use(player.action_space)
         return player_hand[selected_card_id]
 
 
@@ -418,6 +419,7 @@ class Game:
         if len(action_space) <= 0:
             print("Debugging here, this evaluates to False sometimes")
 
+        player.action_space = action_space
         selected_card_id = player.select_cards_to_use(action_space)
         return player_hand[selected_card_id]
 
@@ -433,16 +435,19 @@ class Game:
         player.calculate_can_attack_to_from()  # Update player attack to/from lists
         while len(player.can_attack_from) > 0:
             player.player_state = PlayerPhases.PLAYER_ATTACKING_FROM
-            selected_territory_attack_from = player.select_attack_from(player.can_attack_from)
+            player.action_space = player.can_attack_from
+            selected_territory_attack_from = player.select_attack_from(player.action_space)
             if selected_territory_attack_from == -1:
                 game_log.info("Ending attack phase")
                 break
             player.player_state = PlayerPhases.PLAYER_ATTACKING_WITH
-            selected_armies_attack_with = player.select_attack_with(
-                list(range(1, self.world.territories[selected_territory_attack_from].max_attack_with() + 1))
-            )
+            player.action_space = list(range(1, self.world.territories[selected_territory_attack_from].max_attack_with() + 1))
+            selected_armies_attack_with = player.select_attack_with(player.action_space)
+
             player.player_state = PlayerPhases.PLAYER_ATTACKING_TO
-            selected_territory_to_attack = player.select_attack_to(player.calculate_can_attack_to(selected_territory_attack_from))
+            player.action_space = player.calculate_can_attack_to(selected_territory_attack_from)
+            selected_territory_to_attack = player.select_attack_to(player.action_space)
+
             self.resolve_attack(
                 selected_territory_attack_from, selected_territory_to_attack, selected_armies_attack_with, player
             )
@@ -450,8 +455,8 @@ class Game:
 
     def play_fortification_phase(self, player):
         """ Select fortification from, with, and to (in that order)"""
-        player.calculate_can_fortify_from()
-        fortify_from_territory_id = player.select_fortification_from(player.can_fortify_from)
+        player.action_space = player.calculate_can_fortify_from()
+        fortify_from_territory_id = player.select_fortification_from(player.action_space)
         if fortify_from_territory_id == -1:
             game_log.info(player.get_player_tag() + " Skipping fortification")
             return
@@ -462,13 +467,14 @@ class Game:
             if available_armies > self.game_options["fortification_limit"]:
                 available_armies = self.game_options["fortification_limit"]
 
-        fortify_with_options = list(range(1, available_armies+1))  # Must fortify with at least 1 army
-        selected_with_armies = player.select_fortification_with(fortify_with_options)
+        player.action_space = list(range(1, available_armies+1))  # Must fortify with at least 1 army
+        selected_with_armies = player.select_fortification_with(player.action_space)
 
         friendly_neighbors = definitions.territory_neighbors[fortify_from_territory_id]
         owner_ids = [territory.territory_id for territory in player.territories_owned]
         fortifiable_neighbors = [territory_id for territory_id in friendly_neighbors if territory_id in owner_ids]
-        fortify_to_territory_id = player.select_fortification_to(fortifiable_neighbors)
+        player.action_space = fortifiable_neighbors
+        fortify_to_territory_id = player.select_fortification_to(player.action_space)
 
         # Execute the fortification
         self.adjust_territory_army_number(fortify_from_territory_id, selected_with_armies * -1, addition_mode=True)
@@ -550,9 +556,9 @@ class Game:
         while not self.world.world_occupied:
             for player in self.players:
                 player_message = "Player " + str(player.player_id) + " (" + player.name + "): Input country desired"
-                self.current_game_action_space = [str(i) for i in self.world.allowable_placement_countries()]
+                player.action_space = [str(i) for i in self.world.allowable_placement_countries()]
 
-                player_choice = player.select_initial_army_placement(self.current_game_action_space)
+                player_choice = player.select_initial_army_placement(player.action_space)
 
                 self.player_claim_initial_territory(int(player_choice), player.player_id)
                 game_log.info(
@@ -589,12 +595,12 @@ class Game:
         batch_size = self.game_options["initial_army_placement_batch_size"]
         while game.game_phase == GamePhases.INITIAL_ARMY_FORTIFICATION:
             for player in self.players:
-                self.current_game_action_space = self.get_allowable_initial_fortifications(player.player_id)
+                player.action_space = self.get_allowable_initial_fortifications(player.player_id)
                 for placement in range(batch_size):
                     if player.army_reserve <= 0:
                         continue
 
-                    selected_territory_id = player.select_initial_army_fortification(self.current_game_action_space)
+                    selected_territory_id = player.select_initial_army_fortification(player.action_space)
                     self.adjust_player_army_reserve(player.player_id, -1)
                     self.adjust_territory_army_number(int(selected_territory_id), 1, addition_mode=True)
 
