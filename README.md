@@ -34,12 +34,13 @@ Current usage is just running game.py (no argparse or config yet so configuratio
 - Make game_state for bot more organized
 
 ## Refactor plan for step
-1) Create backup master branch
-2) Create new game loop (instantiate game and while not game.game_over game.step())
+1) Create backup master branch - Done
+2) Create new game loop (instantiate game and while not game.game_over game.game_step()) 
 3) Create Game.step function (moves to next action based on game state)
 4) Fill in step function with initialization
 5) Add play_round to step function
 6) Cut functions out of play_round and insert into step function (test play after inserts)
+7) Create gym environment step function to move several steps to next gym_player turn
 
 
 

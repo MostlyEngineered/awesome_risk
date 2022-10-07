@@ -82,6 +82,9 @@ class RiskGym(gym.Env, EzPickle):
         # return the list of seeds used by RNG(s) in the environment
         return [seed]
 
+    def step(self):
+        self.game.game_step()  # TODO this needs to advance a few game steps to get back to the gym_player's turn (number of game_steps will change when players are eliminated)
+
 # class ConcatObs(gym.Wrapper):
 #     def __init__(self, env, k):
 #         gym.Wrapper.__init__(self, env)
