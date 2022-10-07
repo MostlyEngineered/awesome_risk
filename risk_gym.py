@@ -7,6 +7,7 @@ from gym.error import DependencyNotInstalled
 from gym.utils import EzPickle
 from game import Game
 from logger_format import get_logger
+import numpy as np
 
 game_log = get_logger("GameLog", file_name="game_log.txt", logging_level="info", clear_previous_logs=True)
 
@@ -15,6 +16,10 @@ gym_settings = {
 }
 
 class RiskGym(gym.Env, EzPickle):
+
+
+    # create a dedicated random number generator for the environment
+    np_random = np.random.RandomState()
 
     game_log.info("Initialize Session")
 
@@ -38,7 +43,17 @@ class RiskGym(gym.Env, EzPickle):
 
     def reset(self, seed=None):
         # Manage seed
+        self.seed(seed)
+
         self.game.game_over = True
+
+
+
+        return self.env.reset(
+            seed=seed,
+            options=options,
+            return_info=return_info
+        )
 
     def step(self, action=None):  # TODO how does the action work when the space is not constant
         pass
@@ -49,6 +64,23 @@ class RiskGym(gym.Env, EzPickle):
         continent_bonus = self.gym_player.continent_bonus
         territory_bonus = self.gym_player.territory_bonus
 
+    def seed(self, seed=None):
+        """
+        Set the seed for this environment's random number generator.
+        Returns:
+            list<bigint>: Returns the list of seeds used in this env's random
+              number generators. The first value in the list should be the
+              "main" seed, or the value which a reproducer should pass to
+              'seed'. Often, the main seed equals the provided 'seed', but
+              this won't be true if seed=None, for example.
+        """
+        # if there is no seed, return an empty list
+        if seed is None:
+            return []
+        # set the random number seed for the NumPy random number generator
+        self.np_random.seed(seed)
+        # return the list of seeds used by RNG(s) in the environment
+        return [seed]
 
 # class ConcatObs(gym.Wrapper):
 #     def __init__(self, env, k):
