@@ -21,13 +21,25 @@ Current usage is just running game.py (no argparse or config yet so configuratio
 
 # Fix it list (roughly in order)
 
-1) Implement OpenAI gym environment
-2) Print game summary
-3) Batch game statistics (run N games, winners/draws of games)
+1) Implement fortification after attack (right now function is just pass)
+2) Implement OpenAI gym environment
+    - Refactor game code to move in steps
+    - Steps start with a given input action, and run the game/simulation until a new observation state is generated (also calculates what the reward should be for that given step)
+    - Game needs to have a generic step
+    - In gym environment game loop/step is input action, run game logic to next action point, return observation space and reward.
+3) Make sure player action_space is always updated
+4) Print game summary
+5) Batch game statistics (run N games, winners/draws of games)
 
 - Make game_state for bot more organized
 
-
+## Refactor plan for step
+1) Create backup master branch
+2) Create new game loop (instantiate game and while not game.game_over game.step())
+3) Create Game.step function (moves to next action based on game state)
+4) Fill in step function with initialization
+5) Add play_round to step function
+6) Cut functions out of play_round and insert into step function (test play after inserts)
 
 
 
