@@ -179,7 +179,9 @@ class Player:
 
     def calculate_can_fortify_from(self):
         # Calculate player's territories that can move at least 1 army (ie have 2)
-        fortification_capable = [territory.territory_id for territory in self.territories_owned if territory.num_armies >= 2]
+        fortification_capable = [
+            territory.territory_id for territory in self.territories_owned if territory.num_armies >= 2
+        ]
         owner_ids = [territory.territory_id for territory in self.territories_owned]
         exclude_set = set()
         for territory_id in fortification_capable:
@@ -192,7 +194,6 @@ class Player:
         return self.can_fortify_from
 
     def calculate_can_fortify(self):
-
 
         self.can_fortify = []
 
@@ -318,8 +319,6 @@ class Human(Player):
             print_msg = "Select a territory to fortify to"
             return self.get_human_feedback(print_msg)
 
-
-
         else:
             game_log.error("Invalid player state selected: " + str(self.player_state) + " (player_state)")
             raise ValueError
@@ -350,8 +349,8 @@ class Bot(Player):
             elif 2 in self.action_space:
                 return 2
 
-
         return random.choice(self.action_space)
+
 
 class BerzerkBot(Player):
     """ Should implement method for bot to convert so that it is player 0 for training purposes"""
@@ -378,7 +377,6 @@ class BerzerkBot(Player):
             elif 2 in self.action_space:
                 return 2
 
-
         return random.choice(self.action_space)
 
 
@@ -391,7 +389,7 @@ class RandomBot(Player):
         self.bot_type = bot_type
 
     def get_player_feedback(self):
-         return random.choice(self.action_space)
+        return random.choice(self.action_space)
 
 
 class PacifistBot(Player):

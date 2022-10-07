@@ -6,32 +6,48 @@ from gym import error, spaces
 from gym.error import DependencyNotInstalled
 from gym.utils import EzPickle
 from game import Game
+from logger_format import get_logger
+
+game_log = get_logger("GameLog", file_name="game_log.txt", logging_level="info", clear_previous_logs=True)
+
+gym_settings = {
+    "gym_bot_position": 0
+}
 
 class RiskGym(gym.Env, EzPickle):
 
     game_log.info("Initialize Session")
 
-    options = {"num_human_players": 0, "computer_ai": ["BerzerkBot", "PacifistBot", "PacifistBot"],
-                    "autodeal_territories": False, "initial_army_placement_batch_size": 1,
-                    "always_maximal_attack": True, "berzerker_mode": True,
-                    "turn_limit": 150, "headless": False}  # At current skill level if game hasn't ended by 150 turns it's probably not ending
+    options = {
+        "num_human_players": 0,
+        "computer_ai": ["BerzerkBot", "PacifistBot", "PacifistBot"],
+        "autodeal_territories": False,
+        "initial_army_placement_batch_size": 1,
+        "always_maximal_attack": True,
+        "berzerker_mode": True,
+        "turn_limit": 150,
+        "headless": False,
+    }  # At current skill level if game hasn't ended by 150 turns it's probably not ending
 
+    options["num_human_players"] = 0  # Gym environment always sets human players to 0
     game = Game(options)
+    gym_player = game.get_player(gym_settings["gym_bot_position"])
+    self.action_space = gym_player.action_space  # TODO gym_player.action_space should probably just be passed as the action space
+    # Initialize all players here?
+    # self.action_space = None  # Direct this at the player action space
 
-
-
-
-    #Initialize all players here?
-    self.action_space = None  # Direct this at the player action space
-
-
-
-    def reset(self):
+    def reset(self, seed=None):
         # Manage seed
-        game.game_over = True
+        self.game.game_over = True
 
+    def step(self, action=None):  # TODO how does the action work when the space is not constant
+        pass
     # game.play() #run game
 
+    def reward(self):
+        num_territories = self.gym_player.territories_owned
+        continent_bonus = self.gym_player.continent_bonus
+        territory_bonus = self.gym_player.territory_bonus
 
 
 # class ConcatObs(gym.Wrapper):
@@ -57,3 +73,6 @@ class RiskGym(gym.Env, EzPickle):
 #
 # def _get_ob(self):
 #     return np.array(self.frames)
+
+if __name__ == "__main__":
+    risk_gym = RiskGym()
