@@ -28,9 +28,14 @@ class TestCombat(unittest.TestCase):
 
 
 class TestCards(unittest.TestCase):
-    game_options = {"num_human_players": 0, "computer_ai": ["Bot", "Bot", "Bot"],
-                    "autodeal_territories": False, "initial_army_placement_batch_size": 1,
-                    "always_maximal_attack": True, "berzerker_mode": True}
+    game_options = {
+        "num_human_players": 0,
+        "computer_ai": ["Bot", "Bot", "Bot"],
+        "autodeal_territories": False,
+        "initial_army_placement_batch_size": 1,
+        "always_maximal_attack": True,
+        "berzerker_mode": True,
+    }
     game = None
 
     def setup_test_cards(self):

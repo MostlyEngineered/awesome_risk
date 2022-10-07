@@ -179,16 +179,21 @@ class Player:
 
     def calculate_can_fortify_from(self):
         # Calculate player's territories that can move at least 1 army (ie have 2)
-        fortification_capable = [territory.territory_id for territory in self.territories_owned if territory.num_armies >= 2]
+        fortification_capable = [
+            territory.territory_id for territory in self.territories_owned if territory.num_armies >= 2
+        ]
         owner_ids = [territory.territory_id for territory in self.territories_owned]
-        for i, territory_id in enumerate(fortification_capable):
+        exclude_set = set()
+        for territory_id in fortification_capable:
             neighbor_ids = definitions.territory_neighbors[territory_id]
             if len(set(neighbor_ids).intersection(set(owner_ids))) == 0:
-                fortification_capable.pop(i)  # if the territory has no friendly neighbors it can't fortify anything
+                exclude_set.add(territory_id)  # if the territory has no friendly neighbors it can't fortify anything
+        fortification_capable = list(set(fortification_capable) - exclude_set)
         self.can_fortify_from = [-1] + fortification_capable  # You never have to fortify so -1 is always an option
 
-    def calculate_can_fortify(self):
+        return self.can_fortify_from
 
+    def calculate_can_fortify(self):
 
         self.can_fortify = []
 
@@ -290,6 +295,10 @@ class Human(Player):
             print_msg = "Would you like to exchange cards for armies (Y/N, 1/0)?"
             return self.get_human_feedback(print_msg)
 
+        elif self.player_state == PlayerPhases.PLAYER_CARD_PICK:
+            print_msg = "Select a card"
+            return self.get_human_feedback(print_msg)
+
         elif self.player_state == PlayerPhases.PLAYER_PLACE_NEW_ARMIES:
             print_msg = "Select an army placement"
             return self.get_human_feedback(print_msg)
@@ -308,10 +317,6 @@ class Human(Player):
 
         elif self.player_state == PlayerPhases.PLAYER_FORTIFICATION_TO:
             print_msg = "Select a territory to fortify to"
-            return self.get_human_feedback(print_msg)
-
-        elif self.player_state == PlayerPhases.PLAYER_CARD_PICK:
-            print_msg = "Select a card"
             return self.get_human_feedback(print_msg)
 
         else:
@@ -344,8 +349,8 @@ class Bot(Player):
             elif 2 in self.action_space:
                 return 2
 
-
         return random.choice(self.action_space)
+
 
 class BerzerkBot(Player):
     """ Should implement method for bot to convert so that it is player 0 for training purposes"""
@@ -372,7 +377,6 @@ class BerzerkBot(Player):
             elif 2 in self.action_space:
                 return 2
 
-
         return random.choice(self.action_space)
 
 
@@ -385,7 +389,7 @@ class RandomBot(Player):
         self.bot_type = bot_type
 
     def get_player_feedback(self):
-         return random.choice(self.action_space)
+        return random.choice(self.action_space)
 
 
 class PacifistBot(Player):
