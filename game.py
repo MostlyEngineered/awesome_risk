@@ -109,6 +109,7 @@ class Game:
         self.card_deck = create_territory_deck()
         self.discard_pile = []
         self.playing_cards = []  # Temp list for playing cards
+
         self.army_bonus = calculate_next_army_bonus()
 
         self.world = World()

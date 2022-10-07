@@ -11,6 +11,16 @@ from logger_format import get_logger
 game_log = get_logger("GameLog", file_name="game_log.txt", logging_level="info")
 program_log = get_logger("ProgramLog", file_name="program_errors.txt", logging_level="error")
 
+base_army_rate = 3
+
+def calculate_territory_bonus(num_territories: int) -> int:
+    """ Calculate territory bonus"""
+    territory_bonus = int(np.floor(num_territories / 3))
+    if territory_bonus < base_army_rate:
+        territory_bonus = base_army_rate
+
+    return territory_bonus
+
 
 class Player:
     """ Player class does not get instantiated as it will be missing a feedback option.  Instantiate a bot or a human."""
@@ -166,9 +176,7 @@ class Player:
 
     def new_round_reserve_increase(self):
         self.continent_bonus = 0
-        self.territory_bonus = int(np.floor(len(self.territories_owned) / 3))
-        if self.territory_bonus < 3:
-            self.territory_bonus = 3
+        self.territory_bonus = calculate_territory_bonus(len(self.territories_owned))
 
         for continent in self.continents_owned:
             self.continent_bonus += definitions.continent_bonuses[continent]

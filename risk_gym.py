@@ -8,6 +8,8 @@ from gym.utils import EzPickle
 from game import Game
 from logger_format import get_logger
 import numpy as np
+import definitions
+from player import calculate_territory_bonus, base_army_rate
 
 game_log = get_logger("GameLog", file_name="game_log.txt", logging_level="info", clear_previous_logs=True)
 
@@ -15,11 +17,20 @@ gym_settings = {
     "gym_bot_position": 0
 }
 
+def calculate_max_army_rate():
+    total_num_territories = len(definitions.territory_names)
+    max_territory_bonus = calculate_territory_bonus(total_num_territories)
+    max_continent_bonus = sum(definitions.continent_bonuses.values())
+
+    maximum_army_bonus = max_territory_bonus + max_continent_bonus
+
 class RiskGym(gym.Env, EzPickle):
 
 
     # create a dedicated random number generator for the environment
     np_random = np.random.RandomState()
+
+    max_army_rate = calculate_max_army_rate()
 
     game_log.info("Initialize Session")
 
@@ -59,10 +70,23 @@ class RiskGym(gym.Env, EzPickle):
         pass
     # game.play() #run game
 
-    def reward(self):
-        num_territories = self.gym_player.territories_owned
-        continent_bonus = self.gym_player.continent_bonus
-        territory_bonus = self.gym_player.territory_bonus
+    def reward(self, previous_reward=None, full_game_point=True):
+        """ Calculate reward based on army bonus, normalize to full bonus being worth 1 game.
+              previous_reward: Subtract previous reward from current reward state (None will skip subtraction).
+              full_game_point: If this is True then winning the game will get a full point reward
+              """
+
+        army_rate_percentage = (self.gym_player.army_rate - base_army_rate) / self.max_army_rate
+
+        # TODO Check if env_player has won
+
+        if previous_reward:
+            gym_reward = army_rate_percentage - previous_reward
+        else:
+            gym_reward = army_rate_percentage
+
+    return gym_reward
+
 
     def seed(self, seed=None):
         """
