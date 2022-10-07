@@ -122,6 +122,11 @@ class Game:
         self.territory_names_str = self.get_territory_names()
         self.current_player = None
 
+    def game_step(self):
+        """ This is the basic game loop
+            For this to work with OpenAI gym the game must advance in steps to subsequent actions
+            """
+
     def play(self):
         """ This is the basic game loop
             Start initial setup phase and repeat player turns until game finished
@@ -719,8 +724,8 @@ if __name__ == "__main__":
     # self.options["computer_ai"] = []  # Case for a human game
 
     # self.options["computer_ai"] = ["random_ai"]  # Case for a single bot game
-    number_of_games = 20
-    for game_iteration in range(number_of_games):
-        game = Game(options)
+    game = Game(options)
 
-        game.play()
+    while not game.game_over:
+        game.game_step()
+
