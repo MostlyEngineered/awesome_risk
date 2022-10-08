@@ -5,6 +5,7 @@ import random
 
 @unique
 class GamePhases(Enum):
+    INITIALIZE_GAME = auto()
     INITIAL_ARMY_PLACEMENT = auto()
     INITIAL_ARMY_FORTIFICATION = auto()
     PLAYER_CARD_CHECK = auto()
@@ -15,7 +16,7 @@ class GamePhases(Enum):
 
 @unique
 class PlayerPhases(Enum):
-
+    INITIALIZE_GAME = GamePhases.INITIALIZE_GAME.value
     INITIAL_ARMY_PLACEMENT = GamePhases.INITIAL_ARMY_PLACEMENT.value
     INITIAL_ARMY_FORTIFICATION = GamePhases.INITIAL_ARMY_FORTIFICATION.value
     PLAYER_CARD_CHECK = GamePhases.PLAYER_CARD_CHECK.value

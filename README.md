@@ -28,8 +28,10 @@ Current usage is just running game.py (no argparse or config yet so configuratio
     - Game needs to have a generic step
     - In gym environment game loop/step is input action, run game logic to next action point, return observation space and reward.
 3) Make sure player action_space is always updated
-4) Print game summary
-5) Batch game statistics (run N games, winners/draws of games)
+4) 
+5) Print game summary
+6) Batch game statistics (run N games, winners/draws of games)
+
 
 - Make game_state for bot more organized
 

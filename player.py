@@ -13,8 +13,9 @@ program_log = get_logger("ProgramLog", file_name="program_errors.txt", logging_l
 
 base_army_rate = 3
 
+
 def calculate_territory_bonus(num_territories: int) -> int:
-    """ Calculate territory bonus"""
+    """Calculate territory bonus"""
     territory_bonus = int(np.floor(num_territories / 3))
     if territory_bonus < base_army_rate:
         territory_bonus = base_army_rate
@@ -23,7 +24,7 @@ def calculate_territory_bonus(num_territories: int) -> int:
 
 
 class Player:
-    """ Player class does not get instantiated as it will be missing a feedback option.  Instantiate a bot or a human."""
+    """Player class does not get instantiated as it will be missing a feedback option.  Instantiate a bot or a human."""
 
     def __init__(self, player_id, name) -> object:
         self.human = True
@@ -59,17 +60,39 @@ class Player:
         return "Player " + str(self.player_id) + " (" + self.name + ")"
 
     def get_player_feedback(self):
-        """ This function should get overwritten by inheritance"""
+        """This function should get overwritten by inheritance"""
         raise NotImplementedError()
 
     def generic_selection(self, action_space, player_phase_set, msg):
-        """ Used by the custom action functions.
-              Sets action_space, player phase, and uses inherited get_player_feedback function
-              to get action from Bot or Human
+        """Used by the custom action functions.
+        Sets action_space, player phase, and uses inherited get_player_feedback function
+        to get action from Bot or Human
 
-              Note: checks if action_space is single element and will execute that element"""
+        Note: checks if action_space is single element and will execute that element"""
         self.action_space = action_space
         self.player_state = player_phase_set
+        if len(self.action_space) == 1:
+            game_log.info("Only one choice, autoselecting")
+            player_choice = action_space[0]
+        elif len(self.action_space) == 0:
+            program_log.error("Invalid action space: action space is 0")
+            raise KeyError
+        else:
+            # Normal case
+            player_choice = self.get_player_feedback()
+
+        game_log.info(self.get_player_tag() + " " + msg + ": " + str(player_choice))
+
+        return player_choice
+
+    def decide_step_action(self, action_space, msg=""):
+        """Used by the custom action functions.
+        Sets action_space, player phase, and uses inherited get_player_feedback function
+        to get action from Bot or Human
+
+        Note: checks if action_space is single element and will execute that element"""
+        # self.action_space = action_space
+        # self.player_state = player_phase_set
         if len(self.action_space) == 1:
             game_log.info("Only one choice, autoselecting")
             player_choice = action_space[0]
@@ -93,11 +116,11 @@ class Player:
         )
 
     def select_card_decision(self, action_space=[1, 0]):
-        """ Decide if cards should be turned in (happens if hand is more than 3)"""
+        """Decide if cards should be turned in (happens if hand is more than 3)"""
         return self.generic_selection(action_space, PlayerPhases.PLAYER_CARD_CHECK, "Selects to use cards")
 
     def select_cards_to_use(self, action_space):
-        """ Decide which card to turn in (happens 3 times after card_decision=y or forced to play cards)"""
+        """Decide which card to turn in (happens 3 times after card_decision=y or forced to play cards)"""
         return self.generic_selection(action_space, PlayerPhases.PLAYER_CARD_PICK, "Selects card to use")
 
     def place_new_armies(self, action_space):
@@ -128,7 +151,7 @@ class Player:
         return self.generic_selection(action_space, PlayerPhases.PLAYER_FORTIFICATION_TO, "Fortifying")
 
     def check_player_can_use_cards(self):
-        """ Check if player can or must use cards at start of turn"""
+        """Check if player can or must use cards at start of turn"""
         # TODO this is failing picking up MIX with wilds with card_1 = wild
         if len(self.cards) >= 3:
             # Need at least 3 cards to be able to cash cards in
@@ -251,7 +274,7 @@ class Player:
 
 
 class Human(Player):
-    """ Should implement method for bot to convert so that it is player 0 for training purposes"""
+    """Should implement method for bot to convert so that it is player 0 for training purposes"""
 
     def __init__(self, player_id, name):
         super().__init__(player_id, name)
@@ -260,7 +283,7 @@ class Human(Player):
         # self.initialize_player(player_id, name, False)
 
     def get_human_feedback(self, print_msg) -> int:
-        """ Human version of this function checks player state, prints custom message, collects desired feedback"""
+        """Human version of this function checks player state, prints custom message, collects desired feedback"""
         self.action_space = [str(i) for i in self.action_space]
         while True:
             print(self.get_player_tag() + " " + print_msg)
@@ -333,7 +356,7 @@ class Human(Player):
 
 
 class Bot(Player):
-    """ Should implement method for bot to convert so that it is player 0 for training purposes"""
+    """Should implement method for bot to convert so that it is player 0 for training purposes"""
 
     def __init__(self, player_id, name, bot_type):
         super().__init__(player_id, name)
@@ -361,7 +384,7 @@ class Bot(Player):
 
 
 class BerzerkBot(Player):
-    """ Should implement method for bot to convert so that it is player 0 for training purposes"""
+    """Should implement method for bot to convert so that it is player 0 for training purposes"""
 
     def __init__(self, player_id, name, bot_type):
         super().__init__(player_id, name)
@@ -389,7 +412,7 @@ class BerzerkBot(Player):
 
 
 class RandomBot(Player):
-    """ Should implement method for bot to convert so that it is player 0 for training purposes"""
+    """Should implement method for bot to convert so that it is player 0 for training purposes"""
 
     def __init__(self, player_id, name, bot_type):
         super().__init__(player_id, name)
@@ -401,7 +424,7 @@ class RandomBot(Player):
 
 
 class PacifistBot(Player):
-    """ Should implement method for bot to convert so that it is player 0 for training purposes"""
+    """Should implement method for bot to convert so that it is player 0 for training purposes"""
 
     def __init__(self, player_id, name, bot_type):
         super().__init__(player_id, name)
