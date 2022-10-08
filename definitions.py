@@ -32,7 +32,9 @@ class PlayerPhases(Enum):
     PLAYER_FORTIFICATION_WITH = auto()
     PLAYER_FORTIFICATION_TO = auto()
 
-    PLAYER_CARD_PICK = auto()
+    PLAYER_CARD_PICK_1 = auto()
+    PLAYER_CARD_PICK_2 = auto()
+    PLAYER_CARD_PICK_3 = auto()
 
 
 @unique

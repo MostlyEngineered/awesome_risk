@@ -130,6 +130,7 @@ class Game:
             # Assign correct initial armies
             player.army_reserve = definitions.starting_armies[self.num_players]
         self.world.update_world()
+        self.calculate_game_army_reserves()
 
         if self.game_options["autodeal_territories"]:
             self.autodeal_initial_placements()
@@ -160,7 +161,13 @@ class Game:
             return
 
         if self.game_phase == GamePhases.INITIAL_ARMY_FORTIFICATION:
+
+            self.adjust_player_army_reserve(self.current_player.player_id, -1)
+            self.adjust_territory_army_number(int(action), 1, addition_mode=True)
             self.calculate_game_army_reserves()
+
+            if self.game_army_reserves <= 0:
+                self.game_phase = GamePhases.PLAYER_PLACE_NEW_ARMIES
 
             return
 
@@ -168,12 +175,15 @@ class Game:
             return
 
         if self.game_phase == GamePhases.PLAYER_PLACE_NEW_ARMIES:
+
             return
 
         if self.game_phase == GamePhases.PLAYER_ATTACKING:
+
             return
 
         if self.game_phase == GamePhases.PLAYER_FORTIFICATION:
+            
             return
 
 
@@ -197,6 +207,15 @@ class Game:
             player.action_space = [str(i) for i in self.world.allowable_placement_countries()]
         if self.game_phase == GamePhases.INITIAL_ARMY_FORTIFICATION:
             self.get_allowable_initial_fortifications(player.player_id)
+        if self.game_phase == GamePhases.PLAYER_CARD_CHECK:
+            return
+        if self.game_phase == GamePhases.PLAYER_PLACE_NEW_ARMIES:
+            return
+        if self.game_phase == GamePhases.PLAYER_ATTACKING:
+            return
+        if self.game_phase == GamePhases.PLAYER_FORTIFICATION:
+            return
+
 
     def next_player(self, initial=False):
         """Method to iterate to next player in line
