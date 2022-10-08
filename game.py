@@ -719,8 +719,10 @@ if __name__ == "__main__":
     # self.options["computer_ai"] = []  # Case for a human game
 
     # self.options["computer_ai"] = ["random_ai"]  # Case for a single bot game
-    number_of_games = 20
-    for game_iteration in range(number_of_games):
-        game = Game(options)
 
-        game.play()
+    game = Game(options)
+
+    while not game.game_over:
+        # TODO Get this to work, the reward and observation state will be taken care of in the gym code
+        action = game.current_player.decide_step_action(game.current_player.action_space, msg="")
+        game.game_step(action)
