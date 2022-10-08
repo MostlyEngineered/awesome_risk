@@ -122,6 +122,8 @@ class Game:
         self.territory_names_str = self.get_territory_names()
         self.current_player = None
 
+        self.world.update_world()
+
     def play(self):
         """ This is the basic game loop
             Start initial setup phase and repeat player turns until game finished
@@ -579,15 +581,16 @@ class Game:
     def player_select_initial_placements(self):
         while not self.world.world_occupied:
             for player in self.players:
-                player_message = "Player " + str(player.player_id) + " (" + player.name + "): Input country desired"
+
                 player.action_space = [str(i) for i in self.world.allowable_placement_countries()]
-
                 player_choice = player.select_initial_army_placement(player.action_space)
-
                 self.player_claim_initial_territory(int(player_choice), player.player_id)
                 game_log.info(
                     "Player " + str(player.player_id) + " (" + player.name + "): selected " + str(player_choice)
                 )
+                self.world.update_world()
+                if self.world.world_occupied:
+                    break
 
     def autodeal_initial_placements(self):
         while not self.world.world_occupied:
@@ -608,11 +611,12 @@ class Game:
         for player in self.players:
             # Assign correct initial armies
             player.army_reserve = starting_armies
-        self.world.update_world()
+
         if self.game_options["autodeal_territories"]:
             self.autodeal_initial_placements()
         else:
             self.player_select_initial_placements()
+
 
     def play_initial_army_fortification(self):
         game_log.info("Start initial fortification")
@@ -706,7 +710,7 @@ if __name__ == "__main__":
 
     options = {
         "num_human_players": 0,
-        "computer_ai": ["BerzerkBot", "PacifistBot", "PacifistBot"],
+        "computer_ai": ["BerzerkBot", "BerzerkBot", "BerzerkBot", "BerzerkBot"],
         "autodeal_territories": False,
         "initial_army_placement_batch_size": 1,
         "always_maximal_attack": True,
