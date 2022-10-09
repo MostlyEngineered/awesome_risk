@@ -2,12 +2,16 @@ import random
 
 import numpy as np
 
+import threading
+
 import definitions
 from definitions import generate_random_name, PlayerPhases, CardPhases, CardType
 
 # from game import game_log, program_log
 from logger_format import get_logger
 
+
+lock = threading.Lock()
 game_log = get_logger("GameLog", file_name="game_log.txt", logging_level="info")
 program_log = get_logger("ProgramLog", file_name="program_errors.txt", logging_level="error")
 
@@ -60,6 +64,9 @@ class Player:
               Note: checks if action_space is single element and will execute that element"""
         self.action_space = action_space
         self.player_state = player_phase_set
+
+        # TODO insert thread pause here to step in gym
+        lock.acquire()
         if len(self.action_space) == 1:
             game_log.info("Only one choice, autoselecting")
             player_choice = action_space[0]

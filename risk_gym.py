@@ -8,6 +8,10 @@ from gym.utils import EzPickle
 from game import Game
 from logger_format import get_logger
 import numpy as np
+from threading import Thread
+import threading
+from player import lock
+import time
 
 game_log = get_logger("GameLog", file_name="game_log.txt", logging_level="info", clear_previous_logs=True)
 
@@ -37,7 +41,7 @@ class RiskGym(gym.Env, EzPickle):
     options["num_human_players"] = 0  # Gym environment always sets human players to 0
     game = Game(options)
     gym_player = game.get_player(gym_settings["gym_bot_position"])
-    self.action_space = gym_player.action_space  # TODO gym_player.action_space should probably just be passed as the action space
+    # self.action_space = gym_player.action_space  # TODO gym_player.action_space should probably just be passed as the action space
     # Initialize all players here?
     # self.action_space = None  # Direct this at the player action space
 
@@ -106,5 +110,29 @@ class RiskGym(gym.Env, EzPickle):
 # def _get_ob(self):
 #     return np.array(self.frames)
 
+def test_thread():
+    while True:
+        if lock.locked():
+            print("releasing thread")
+            lock.release()
+        time.sleep(0.05)
+
 if __name__ == "__main__":
+
+    # TODO this needs to be implemented in threading so that the thread can be paused
+    # Thread should pause and put action in shared memory for the game
+    # Observation space needs to be available in threading
     risk_gym = RiskGym()
+
+    game_thread = Thread(target=risk_gym.game.play)
+    gym_thread = Thread(target=test_thread)
+
+    game_thread.start()
+    gym_thread.start()
+
+    while True:
+        print("Infinite loop")
+        time.sleep(0.75)
+
+
+

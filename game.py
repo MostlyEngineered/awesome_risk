@@ -8,6 +8,7 @@ import random
 from combat import resolve_combat
 import time
 
+
 import os
 
 import matplotlib
@@ -121,8 +122,11 @@ class Game:
         self.im = None
         self.territory_names_str = self.get_territory_names()
         self.current_player = None
+        self.current_player_action = None  # This is for gym input, None defers to standard bots or human
 
         self.world.update_world()
+
+
 
     def play(self):
         """ This is the basic game loop
@@ -621,7 +625,7 @@ class Game:
     def play_initial_army_fortification(self):
         game_log.info("Start initial fortification")
         batch_size = self.game_options["initial_army_placement_batch_size"]
-        while game.game_phase == GamePhases.INITIAL_ARMY_FORTIFICATION:
+        while self.game_phase == GamePhases.INITIAL_ARMY_FORTIFICATION:
             for player in self.players:
                 player.action_space = self.get_allowable_initial_fortifications(player.player_id)
                 for placement in range(batch_size):
@@ -715,7 +719,7 @@ if __name__ == "__main__":
         "initial_army_placement_batch_size": 1,
         "always_maximal_attack": True,
         "berzerker_mode": True,
-        "turn_limit": 150,
+        "turn_limit": 50,
         "headless": False,
     }  # At current skill level if game hasn't ended by 150 turns it's probably not ending
 
