@@ -1,0 +1,9 @@
+# Game configuration
+"num_human_players": 0,
+"computer_ai": ["BerzerkBot", "PacifistBot", "PacifistBot"],
+"autodeal_territories": False,
+"initial_army_placement_batch_size": 1,
+"always_maximal_attack": True,
+"berzerker_mode": True,
+"turn_limit": 150,
+"headless": False

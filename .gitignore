@@ -1,0 +1,7 @@
+	.coverage
+	.idea/
+	__pycache__/
+	game_log.txt
+	program_errors.txt
+	testing/__pycache__/
+

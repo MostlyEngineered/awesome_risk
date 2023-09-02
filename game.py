@@ -20,6 +20,11 @@ program_log = get_logger("ProgramLog", file_name="program_errors.txt", logging_l
 CARD_DECK = definitions.territory_cards
 
 
+# Refactoring to state diagram approach
+# Step refers to a training step in the gym environment
+# Advance refers to a single action in the game (by any player)
+
+
 def flatten_list(over_list):
     flat_list = [item for sublist in over_list for item in sublist]
     removed_duplicates = list(set(flat_list))
@@ -617,7 +622,7 @@ class Game:
     def play_initial_army_fortification(self):
         game_log.info("Start initial fortification")
         batch_size = self.game_options["initial_army_placement_batch_size"]
-        while game.game_phase == GamePhases.INITIAL_ARMY_FORTIFICATION:
+        while self.game_phase == GamePhases.INITIAL_ARMY_FORTIFICATION:
             for player in self.players:
                 player.action_space = self.get_allowable_initial_fortifications(player.player_id)
                 for placement in range(batch_size):

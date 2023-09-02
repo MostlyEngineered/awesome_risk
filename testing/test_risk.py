@@ -83,6 +83,25 @@ class TestCards(unittest.TestCase):
         self.check_card_turn_in([0, 42, 9, 1])  # Add cards to previous
         self.check_card_turn_in([0, 42, 1, 9, 3, 4])  # Add cards to previous
 
+    def test_run_game_to_end(self):
+        options = {
+            "num_human_players": 0,
+            "computer_ai": ["BerzerkBot", "PacifistBot", "PacifistBot"],
+            "autodeal_territories": False,
+            "initial_army_placement_batch_size": 1,
+            "always_maximal_attack": True,
+            "berzerker_mode": True,
+            "turn_limit": 300,
+            "headless": True
+            }  # At current skill level if game hasn't ended by 150 turns it's probably not ending
+
+        # self.options["num_human_players"] = 3  # Case for a human game
+        # self.options["computer_ai"] = []  # Case for a human game
+
+        # self.options["computer_ai"] = ["random_ai"]  # Case for a single bot game
+        cur_game = Game(options)
+
+        cur_game.play()
 
 if __name__ == "__main__":
     unittest.main()

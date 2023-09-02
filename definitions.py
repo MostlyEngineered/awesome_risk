@@ -20,8 +20,6 @@ class PlayerPhases(Enum):
     INITIAL_ARMY_FORTIFICATION = GamePhases.INITIAL_ARMY_FORTIFICATION.value
     PLAYER_CARD_CHECK = GamePhases.PLAYER_CARD_CHECK.value
     PLAYER_PLACE_NEW_ARMIES = GamePhases.PLAYER_PLACE_NEW_ARMIES.value
-    # PLAYER_ATTACKING = GamePhases.PLAYER_ATTACKING.value # Not needed as Attacking from and to exist
-    # PLAYER_FORTIFICATION = GamePhases.PLAYER_FORTIFICATION.value # Not needed as Fortification from and to exist
 
     PLAYER_ATTACKING_FROM = auto()
     PLAYER_ATTACKING_WITH = auto()
