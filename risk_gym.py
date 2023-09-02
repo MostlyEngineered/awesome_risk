@@ -9,14 +9,14 @@ from game import Game
 from logger_format import get_logger
 import numpy as np
 
-game_log = get_logger("GameLog", file_name="game_log.txt", logging_level="info", clear_previous_logs=True)
+game_log = get_logger(
+    "GameLog", file_name="game_log.txt", logging_level="info", clear_previous_logs=True
+)
 
-gym_settings = {
-    "gym_bot_position": 0
-}
+gym_settings = {"gym_bot_position": 0}
+
 
 class RiskGym(gym.Env, EzPickle):
-
 
     # create a dedicated random number generator for the environment
     np_random = np.random.RandomState()
@@ -37,7 +37,9 @@ class RiskGym(gym.Env, EzPickle):
     options["num_human_players"] = 0  # Gym environment always sets human players to 0
     game = Game(options)
     gym_player = game.get_player(gym_settings["gym_bot_position"])
-    self.action_space = gym_player.action_space  # TODO gym_player.action_space should probably just be passed as the action space
+    self.action_space = (
+        gym_player.action_space
+    )  # TODO gym_player.action_space should probably just be passed as the action space
     # Initialize all players here?
     # self.action_space = None  # Direct this at the player action space
 
@@ -47,16 +49,13 @@ class RiskGym(gym.Env, EzPickle):
 
         self.game.game_over = True
 
+        return self.env.reset(seed=seed, options=options, return_info=return_info)
 
-
-        return self.env.reset(
-            seed=seed,
-            options=options,
-            return_info=return_info
-        )
-
-    def step(self, action=None):  # TODO how does the action work when the space is not constant
+    def step(
+        self, action=None
+    ):  # TODO how does the action work when the space is not constant
         pass
+
     # game.play() #run game
 
     def reward(self):
@@ -81,6 +80,7 @@ class RiskGym(gym.Env, EzPickle):
         self.np_random.seed(seed)
         # return the list of seeds used by RNG(s) in the environment
         return [seed]
+
 
 # class ConcatObs(gym.Wrapper):
 #     def __init__(self, env, k):

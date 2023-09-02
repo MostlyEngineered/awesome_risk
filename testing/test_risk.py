@@ -1,15 +1,22 @@
+import unittest
+import random
+import os
+import sys
+
+# Add the project directory to the Python path
+base_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
+sys.path.insert(0, base_dir)
+
 from combat import *
 from game import *
 from definitions import *
-import unittest
-import random
 
 random.seed(111111)
 
 
 class TestCombat(unittest.TestCase):
     def test_roll_dice(self):
-        """ roll number of dice """
+        """roll number of dice"""
         dice = roll_dice(100)
         for die in dice:
             self.assertGreaterEqual(die, 1)
@@ -92,8 +99,8 @@ class TestCards(unittest.TestCase):
             "always_maximal_attack": True,
             "berzerker_mode": True,
             "turn_limit": 300,
-            "headless": True
-            }  # At current skill level if game hasn't ended by 150 turns it's probably not ending
+            "headless": True,
+        }  # At current skill level if game hasn't ended by 150 turns it's probably not ending
 
         # self.options["num_human_players"] = 3  # Case for a human game
         # self.options["computer_ai"] = []  # Case for a human game
@@ -102,6 +109,7 @@ class TestCards(unittest.TestCase):
         cur_game = Game(options)
 
         cur_game.play()
+
 
 if __name__ == "__main__":
     unittest.main()

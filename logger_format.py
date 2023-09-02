@@ -13,7 +13,9 @@ log_levels_dict = {
 path_level = 2
 
 
-def get_logger(get_name, file_name=None, logging_level="info", clear_previous_logs=False):
+def get_logger(
+    get_name, file_name=None, logging_level="info", clear_previous_logs=False
+):
     logger = logging.getLogger(get_name)
 
     if len(logger.handlers) == 0:
@@ -39,10 +41,16 @@ class ColorFormatter(logging.Formatter):
         if record.levelno == logging.INFO:
             self._style._fmt = "%(message)s"
         else:
-            color = {logging.WARNING: 33, logging.ERROR: 31, logging.FATAL: 31, logging.DEBUG: 36}.get(
-                record.levelno, 0
+            color = {
+                logging.WARNING: 33,
+                logging.ERROR: 31,
+                logging.FATAL: 31,
+                logging.DEBUG: 36,
+            }.get(record.levelno, 0)
+            level_style = (
+                f"\033[1m\033[{color}m%(levelname)s:%(asctime)s:"
+                + "%(shortpath)s\033[0m"
             )
-            level_style = f"\033[1m\033[{color}m%(levelname)s:%(asctime)s:" + "%(shortpath)s\033[0m"
             self._style._fmt = level_style + ": %(message)s"
 
         return super().format(record)

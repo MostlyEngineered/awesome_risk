@@ -1,7 +1,9 @@
 import definitions
 from logger_format import get_logger
 
-program_log = get_logger("ProgramLog", file_name="program_errors.txt", logging_level="error")
+program_log = get_logger(
+    "ProgramLog", file_name="program_errors.txt", logging_level="error"
+)
 
 
 class Territory:
@@ -73,11 +75,15 @@ class World:
             return False
 
     def update_available_territories(self):
-        self.available_territories = [territory for territory in self.territories if territory.owner_id is None]
+        self.available_territories = [
+            territory for territory in self.territories if territory.owner_id is None
+        ]
 
     def update_territory_count(self):
         self.update_available_territories()
-        self.territories_occupied = self.num_territories - len(self.available_territories)
+        self.territories_occupied = self.num_territories - len(
+            self.available_territories
+        )
         if self.territories_occupied == self.num_territories:
             self.world_occupied = True
 
@@ -88,7 +94,7 @@ class World:
         return [territory.territory_id for territory in self.available_territories]
 
     def change_territory_owner(self, territory_id, owner_id, num_armies):
-        """ Don't use this method except from the game change_territory_owner method"""
+        """Don't use this method except from the game change_territory_owner method"""
         territory = self.territories[territory_id]
         territory.owner_id = owner_id
         territory.num_armies = num_armies
@@ -98,7 +104,9 @@ def create_territories():
     territories = []
     for territory_id in definitions.territory_names.keys():
         territory = Territory(
-            territory_id, definitions.territory_names[territory_id], definitions.territory_neighbors[territory_id]
+            territory_id,
+            definitions.territory_names[territory_id],
+            definitions.territory_neighbors[territory_id],
         )
         territories.append(territory)
     return territories

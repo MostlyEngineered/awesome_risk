@@ -9,11 +9,13 @@ from definitions import generate_random_name, PlayerPhases, CardPhases, CardType
 from logger_format import get_logger
 
 game_log = get_logger("GameLog", file_name="game_log.txt", logging_level="info")
-program_log = get_logger("ProgramLog", file_name="program_errors.txt", logging_level="error")
+program_log = get_logger(
+    "ProgramLog", file_name="program_errors.txt", logging_level="error"
+)
 
 
 class Player:
-    """ Player class does not get instantiated as it will be missing a feedback option.  Instantiate a bot or a human."""
+    """Player class does not get instantiated as it will be missing a feedback option.  Instantiate a bot or a human."""
 
     def __init__(self, player_id, name) -> object:
         self.human = True
@@ -49,15 +51,15 @@ class Player:
         return "Player " + str(self.player_id) + " (" + self.name + ")"
 
     def get_player_feedback(self):
-        """ This function should get overwritten by inheritance"""
+        """This function should get overwritten by inheritance"""
         raise NotImplementedError()
 
     def generic_selection(self, action_space, player_phase_set, msg):
-        """ Used by the custom action functions.
-              Sets action_space, player phase, and uses inherited get_player_feedback function
-              to get action from Bot or Human
+        """Used by the custom action functions.
+        Sets action_space, player phase, and uses inherited get_player_feedback function
+        to get action from Bot or Human
 
-              Note: checks if action_space is single element and will execute that element"""
+        Note: checks if action_space is single element and will execute that element"""
         self.action_space = action_space
         self.player_state = player_phase_set
         if len(self.action_space) == 1:
@@ -75,50 +77,76 @@ class Player:
         return player_choice
 
     def select_initial_army_placement(self, action_space):
-        return self.generic_selection(action_space, PlayerPhases.INITIAL_ARMY_PLACEMENT, "Initial army placement")
+        return self.generic_selection(
+            action_space, PlayerPhases.INITIAL_ARMY_PLACEMENT, "Initial army placement"
+        )
 
     def select_initial_army_fortification(self, action_space):
         return self.generic_selection(
-            action_space, PlayerPhases.INITIAL_ARMY_FORTIFICATION, "Initial army fortification"
+            action_space,
+            PlayerPhases.INITIAL_ARMY_FORTIFICATION,
+            "Initial army fortification",
         )
 
     def select_card_decision(self, action_space=[1, 0]):
-        """ Decide if cards should be turned in (happens if hand is more than 3)"""
-        return self.generic_selection(action_space, PlayerPhases.PLAYER_CARD_CHECK, "Selects to use cards")
+        """Decide if cards should be turned in (happens if hand is more than 3)"""
+        return self.generic_selection(
+            action_space, PlayerPhases.PLAYER_CARD_CHECK, "Selects to use cards"
+        )
 
     def select_cards_to_use(self, action_space):
-        """ Decide which card to turn in (happens 3 times after card_decision=y or forced to play cards)"""
-        return self.generic_selection(action_space, PlayerPhases.PLAYER_CARD_PICK, "Selects card to use")
+        """Decide which card to turn in (happens 3 times after card_decision=y or forced to play cards)"""
+        return self.generic_selection(
+            action_space, PlayerPhases.PLAYER_CARD_PICK, "Selects card to use"
+        )
 
     def place_new_armies(self, action_space):
-        return self.generic_selection(action_space, PlayerPhases.PLAYER_PLACE_NEW_ARMIES, "Places new army in")
+        return self.generic_selection(
+            action_space, PlayerPhases.PLAYER_PLACE_NEW_ARMIES, "Places new army in"
+        )
 
     def select_attack_from(self, action_space):
-        return self.generic_selection(action_space, PlayerPhases.PLAYER_ATTACKING_FROM, "Attacks from")
+        return self.generic_selection(
+            action_space, PlayerPhases.PLAYER_ATTACKING_FROM, "Attacks from"
+        )
 
     def select_attack_with(self, action_space):
-        return self.generic_selection(action_space, PlayerPhases.PLAYER_ATTACKING_WITH, "Attacks with how many armies")
+        return self.generic_selection(
+            action_space,
+            PlayerPhases.PLAYER_ATTACKING_WITH,
+            "Attacks with how many armies",
+        )
 
     def select_attack_to(self, action_space):
-        return self.generic_selection(action_space, PlayerPhases.PLAYER_ATTACKING_TO, "Attacking")
+        return self.generic_selection(
+            action_space, PlayerPhases.PLAYER_ATTACKING_TO, "Attacking"
+        )
 
     def select_attack_move_post_win(self, action_space):
         return self.generic_selection(
-            action_space, PlayerPhases.PLAYER_MOVING_POST_WIN, "Move how many armies into new territory?"
+            action_space,
+            PlayerPhases.PLAYER_MOVING_POST_WIN,
+            "Move how many armies into new territory?",
         )
 
     def select_fortification_from(self, action_space):
         action_space = [-1] + action_space
-        return self.generic_selection(action_space, PlayerPhases.PLAYER_FORTIFICATION_FROM, "Fortifies from")
+        return self.generic_selection(
+            action_space, PlayerPhases.PLAYER_FORTIFICATION_FROM, "Fortifies from"
+        )
 
     def select_fortification_with(self, action_space):
-        return self.generic_selection(action_space, PlayerPhases.PLAYER_FORTIFICATION_WITH, "Fortifying")
+        return self.generic_selection(
+            action_space, PlayerPhases.PLAYER_FORTIFICATION_WITH, "Fortifying"
+        )
 
     def select_fortification_to(self, action_space):
-        return self.generic_selection(action_space, PlayerPhases.PLAYER_FORTIFICATION_TO, "Fortifying")
+        return self.generic_selection(
+            action_space, PlayerPhases.PLAYER_FORTIFICATION_TO, "Fortifying"
+        )
 
     def check_player_can_use_cards(self):
-        """ Check if player can or must use cards at start of turn"""
+        """Check if player can or must use cards at start of turn"""
         # TODO this is failing picking up MIX with wilds with card_1 = wild
         if len(self.cards) >= 3:
             # Need at least 3 cards to be able to cash cards in
@@ -175,21 +203,29 @@ class Player:
 
         self.army_rate = self.territory_bonus + self.continent_bonus
         self.army_reserve = self.army_rate
-        game_log.info(self.get_player_tag() + " New turn bonus armies: " + str(self.army_reserve))
+        game_log.info(
+            self.get_player_tag() + " New turn bonus armies: " + str(self.army_reserve)
+        )
 
     def calculate_can_fortify_from(self):
         # Calculate player's territories that can move at least 1 army (ie have 2)
         fortification_capable = [
-            territory.territory_id for territory in self.territories_owned if territory.num_armies >= 2
+            territory.territory_id
+            for territory in self.territories_owned
+            if territory.num_armies >= 2
         ]
         owner_ids = [territory.territory_id for territory in self.territories_owned]
         exclude_set = set()
         for territory_id in fortification_capable:
             neighbor_ids = definitions.territory_neighbors[territory_id]
             if len(set(neighbor_ids).intersection(set(owner_ids))) == 0:
-                exclude_set.add(territory_id)  # if the territory has no friendly neighbors it can't fortify anything
+                exclude_set.add(
+                    territory_id
+                )  # if the territory has no friendly neighbors it can't fortify anything
         fortification_capable = list(set(fortification_capable) - exclude_set)
-        self.can_fortify_from = [-1] + fortification_capable  # You never have to fortify so -1 is always an option
+        self.can_fortify_from = [
+            -1
+        ] + fortification_capable  # You never have to fortify so -1 is always an option
 
         return self.can_fortify_from
 
@@ -199,13 +235,17 @@ class Player:
 
     def calculate_can_attack_to_from(self):
         territories_with_two = [
-            territory.territory_id for territory in self.territories_owned if territory.num_armies >= 2
+            territory.territory_id
+            for territory in self.territories_owned
+            if territory.num_armies >= 2
         ]
 
         player_id = self.player_id
         # Countries that connect to countries that have at least 2 armies
         can_attack = set()
-        can_attack_from = set({-1})  # -1 corresponds to passing attack and will end attack phase
+        can_attack_from = set(
+            {-1}
+        )  # -1 corresponds to passing attack and will end attack phase
         for territory_id in territories_with_two:
             connected_territories = definitions.territory_neighbors[territory_id]
             valid_connections = set(connected_territories).difference(
@@ -222,7 +262,9 @@ class Player:
 
     def calculate_can_attack_to(self, territory_from_id):
         connected_territories = definitions.territory_neighbors[territory_from_id]
-        valid_connections = set(connected_territories).difference(self.territory_ids)  # remove self-owned territories
+        valid_connections = set(connected_territories).difference(
+            self.territory_ids
+        )  # remove self-owned territories
         return list(valid_connections)
 
     def __lt__(self, other):
@@ -243,7 +285,7 @@ class Player:
 
 
 class Human(Player):
-    """ Should implement method for bot to convert so that it is player 0 for training purposes"""
+    """Should implement method for bot to convert so that it is player 0 for training purposes"""
 
     def __init__(self, player_id, name):
         super().__init__(player_id, name)
@@ -252,7 +294,7 @@ class Human(Player):
         # self.initialize_player(player_id, name, False)
 
     def get_human_feedback(self, print_msg) -> int:
-        """ Human version of this function checks player state, prints custom message, collects desired feedback"""
+        """Human version of this function checks player state, prints custom message, collects desired feedback"""
         self.action_space = [str(i) for i in self.action_space]
         while True:
             print(self.get_player_tag() + " " + print_msg)
@@ -271,7 +313,9 @@ class Human(Player):
                 # r selects random element from allowable_actions
                 return random.choice(self.action_space)
             elif attempt == "q":
-                print("You have selected to quit game, are you sure you want to quit game? (y/n)")
+                print(
+                    "You have selected to quit game, are you sure you want to quit game? (y/n)"
+                )
                 quit_confirm = input()
                 if quit_confirm.lower() == "y":
                     game_log.info(self.get_player_tag() + " has elected to quit game")
@@ -320,12 +364,16 @@ class Human(Player):
             return self.get_human_feedback(print_msg)
 
         else:
-            game_log.error("Invalid player state selected: " + str(self.player_state) + " (player_state)")
+            game_log.error(
+                "Invalid player state selected: "
+                + str(self.player_state)
+                + " (player_state)"
+            )
             raise ValueError
 
 
 class Bot(Player):
-    """ Should implement method for bot to convert so that it is player 0 for training purposes"""
+    """Should implement method for bot to convert so that it is player 0 for training purposes"""
 
     def __init__(self, player_id, name, bot_type):
         super().__init__(player_id, name)
@@ -336,7 +384,9 @@ class Bot(Player):
         if self.player_state == PlayerPhases.PLAYER_ATTACKING_FROM:
             if len(self.action_space) > 1:  # Berzerker mode
                 try:
-                    self.action_space.pop(self.action_space.index(-1))  # Remove not attacking
+                    self.action_space.pop(
+                        self.action_space.index(-1)
+                    )  # Remove not attacking
                     return random.choice(self.action_space)
                 except ValueError:
                     program_log("illegal op")
@@ -353,7 +403,7 @@ class Bot(Player):
 
 
 class BerzerkBot(Player):
-    """ Should implement method for bot to convert so that it is player 0 for training purposes"""
+    """Should implement method for bot to convert so that it is player 0 for training purposes"""
 
     def __init__(self, player_id, name, bot_type):
         super().__init__(player_id, name)
@@ -364,7 +414,9 @@ class BerzerkBot(Player):
         if self.player_state == PlayerPhases.PLAYER_ATTACKING_FROM:
             if len(self.action_space) > 1:  # Berzerker mode
                 try:
-                    self.action_space.pop(self.action_space.index(-1))  # Remove not attacking
+                    self.action_space.pop(
+                        self.action_space.index(-1)
+                    )  # Remove not attacking
                     return random.choice(self.action_space)
                 except ValueError:
                     program_log("illegal op")
@@ -381,7 +433,7 @@ class BerzerkBot(Player):
 
 
 class RandomBot(Player):
-    """ Should implement method for bot to convert so that it is player 0 for training purposes"""
+    """Should implement method for bot to convert so that it is player 0 for training purposes"""
 
     def __init__(self, player_id, name, bot_type):
         super().__init__(player_id, name)
@@ -393,7 +445,7 @@ class RandomBot(Player):
 
 
 class PacifistBot(Player):
-    """ Should implement method for bot to convert so that it is player 0 for training purposes"""
+    """Should implement method for bot to convert so that it is player 0 for training purposes"""
 
     def __init__(self, player_id, name, bot_type):
         super().__init__(player_id, name)

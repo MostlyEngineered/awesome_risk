@@ -1,23 +1,25 @@
 import random
 from logger_format import get_logger
 
-program_log = get_logger("ProgramLog", file_name="program_errors.txt", logging_level="error")
+program_log = get_logger(
+    "ProgramLog", file_name="program_errors.txt", logging_level="error"
+)
 
 
 def roll_dice(num_dice):
-    """ roll number of dice """
+    """roll number of dice"""
     return [random.randint(1, 6) for x in range(num_dice)]
 
 
 def attack_dice_wins(attack_pips, defense_pips):
-    """ compare pair of dice, defense wins ties"""
+    """compare pair of dice, defense wins ties"""
     return attack_pips > defense_pips
 
 
 def resolve_combat(num_attack_dice, num_defense_dice):
-    """ resolve combat
-        rules: pairs are compared sequentially, defense wins ties
-        return tuple of army losses (attacker losses, defender losses)"""
+    """resolve combat
+    rules: pairs are compared sequentially, defense wins ties
+    return tuple of army losses (attacker losses, defender losses)"""
 
     if num_attack_dice > 3:
         program_log.error("illegal amount of attack dice")

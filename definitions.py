@@ -230,11 +230,22 @@ territory_locations = {
 }
 
 territory_neighbors_df = pd.DataFrame(
-    [(territory, neighbor) for territory, neighbors in territory_neighbors.items() for neighbor in neighbors],
+    [
+        (territory, neighbor)
+        for territory, neighbors in territory_neighbors.items()
+        for neighbor in neighbors
+    ],
     columns=["territory_id", "neighbor_id"],
 )
 
-continent_names = {0: "africa", 1: "asia", 2: "europe", 3: "north-america", 4: "oceania", 5: "south-america"}
+continent_names = {
+    0: "africa",
+    1: "asia",
+    2: "europe",
+    3: "north-america",
+    4: "oceania",
+    5: "south-america",
+}
 
 continent_bonuses = {0: 3, 1: 7, 2: 5, 3: 5, 4: 2, 5: 2}
 
@@ -247,13 +258,33 @@ continent_territories = {
     5: [3, 4, 28, 37],
 }
 
-territory_continents = {tid: cid for cid, tids in continent_territories.items() for tid in tids}
+territory_continents = {
+    tid: cid for cid, tids in continent_territories.items() for tid in tids
+}
 
-player_colors = {0: "red", 1: "blue", 2: "green", 3: "yellow", 4: "pink", 5: "black", None: None}
+player_colors = {
+    0: "red",
+    1: "blue",
+    2: "green",
+    3: "yellow",
+    4: "pink",
+    5: "black",
+    None: None,
+}
 
 starting_armies = {1: 60, 2: 40, 3: 35, 4: 30, 5: 25, 6: 20}  # 1 case is for debugging
 
-player_name_list = ["Jasper", "Bowser", "Fedora", "Winston", "Harris", "Chad", "Ash", "Bardock", "Hercule"]
+player_name_list = [
+    "Jasper",
+    "Bowser",
+    "Fedora",
+    "Winston",
+    "Harris",
+    "Chad",
+    "Ash",
+    "Bardock",
+    "Hercule",
+]
 
 
 def generate_random_name(exclude_names=[]):
