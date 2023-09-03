@@ -65,13 +65,8 @@ flowchart TD
         K -- "Player Declines to Fortify" --> D
         M -- "Player Finished Fortifying" --> D
         
+        H -- "No Teams Left to Attack" --> N[Player Won]
+        
+        
     end
-```
-
-
-Implementation Mermaid Diagram:
-```mermaid
-flowchart TD
-    A[Game Start] --> B[Initial Army Placement]
-
 ```
