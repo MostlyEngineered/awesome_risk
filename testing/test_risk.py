@@ -9,7 +9,7 @@ random.seed(111111)
 
 class TestCombat(unittest.TestCase):
     def test_roll_dice(self):
-        """ roll number of dice """
+        """roll number of dice"""
         dice = roll_dice(100)
         for die in dice:
             self.assertGreaterEqual(die, 1)

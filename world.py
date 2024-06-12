@@ -85,10 +85,11 @@ class World:
         self.update_territory_count()
 
     def allowable_placement_countries(self):
+        self.update_available_territories()
         return [territory.territory_id for territory in self.available_territories]
 
     def change_territory_owner(self, territory_id, owner_id, num_armies):
-        """ Don't use this method except from the game change_territory_owner method"""
+        """Don't use this method except from the game change_territory_owner method"""
         territory = self.territories[territory_id]
         territory.owner_id = owner_id
         territory.num_armies = num_armies
